@@ -132,6 +132,75 @@ function resetFormulasInMasterTracker() {
   SpreadsheetApp.getUi().alert("✅ Formulas in columns G–J were reset.");
 }
 
+/**
+ * insertAllMissingClients
+ *
+ * Inserts any clients from the Helper Sheet into the Master Tracker
+ * if they’re missing from the current list.
+ */
+function insertAllMissingClients() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const helperSheet = ss.getSheetByName("Active Clients Sorted");
+  const masterSheet = ss.getSheetByName("Master Tracker");
+
+  const helperClients = helperSheet.getRange(2, 1, helperSheet.getLastRow() - 1).getValues().flat();
+  const existingClients = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues().flat();
+
+  const missingClients = helperClients.filter(name => name && !existingClients.includes(name));
+
+  if (missingClients.length === 0) {
+    SpreadsheetApp.getUi().alert("✅ All active clients are already in the Master Tracker.");
+    return;
+  }
+
+  const monthLabel = masterSheet.getRange(2, 1).getValue(); // Use existing month
+
+  missingClients.forEach(name => {
+    masterSheet.appendRow([monthLabel, name]);
+  });
+
+  SpreadsheetApp.getUi().alert(`✅ ${missingClients.length} missing client(s) added to the Master Tracker.`);
+}
+
+/**
+ * insertNewClientIntoDirectory
+ *
+ * Prompts the user for a new client name and status,
+ * then adds them to the Client Directory if not already present.
+ */
+function insertNewClientIntoDirectory() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Client Directory");
+  const lastRow = sheet.getLastRow();
+
+  const clientPrompt = ui.prompt("New Client", "Enter the client's domain (e.g., example.com):", ui.ButtonSet.OK_CANCEL);
+  if (clientPrompt.getSelectedButton() !== ui.Button.OK) return;
+
+  const clientName = clientPrompt.getResponseText().trim();
+  if (!clientName) {
+    ui.alert("No client name provided.");
+    return;
+  }
+
+  const statusPrompt = ui.prompt("Client Status", "Enter status (Active, Inactive, Transitioning):", ui.ButtonSet.OK_CANCEL);
+  if (statusPrompt.getSelectedButton() !== ui.Button.OK) return;
+
+  const status = statusPrompt.getResponseText().trim();
+  if (!status) {
+    ui.alert("No status provided.");
+    return;
+  }
+
+  const existing = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+  if (existing.includes(clientName)) {
+    ui.alert(`⚠️ ${clientName} already exists in the Client Directory.`);
+    return;
+  }
+
+  sheet.appendRow([clientName, "", "", "", status]);
+  ui.alert(`✅ ${clientName} added to the Client Directory.`);
+}
 
 /**
  * clearDocAndFolderLinks
@@ -147,17 +216,18 @@ function clearDocAndFolderLinks() {
   SpreadsheetApp.getUi().alert("🧹 Cleared support summary and folder links from columns N and T.");
 }
 
-
 /**
  * onOpen
  *
- * Adds a custom menu called "Client Tools" for easier script access.
+ * Loads the "Client Tools" custom menu with all utility options.
  */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('🗂 Client Tools')
     .addItem('Run Monthly Rollover & Docs', 'monthlyRolloverAndCreateDocs')
     .addItem('Reset Master Tracker Formulas', 'resetFormulasInMasterTracker')
+    .addItem('Insert New Client into Directory', 'insertNewClientIntoDirectory')
+    .addItem('Insert All Missing Clients into Master Tracker', 'insertAllMissingClients')
     .addItem('Clear Doc & Folder Links', 'clearDocAndFolderLinks')
     .addToUi();
 }
