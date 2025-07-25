@@ -8,7 +8,6 @@
  * - Creates and logs a support summary Google Doc
  */
 function monthlyRolloverAndCreateDocs() {
-  // Toggle DRY_RUN to true to test without creating docs
   const DRY_RUN = false;
 
   // === Spreadsheet and UI references ===
@@ -16,21 +15,21 @@ function monthlyRolloverAndCreateDocs() {
   const ui = SpreadsheetApp.getUi();  // UI for alerts
 
   // === Primary data sheets ===
-  const masterSheet = ss.getSheetByName("Master Tracker");  // Main tracking sheet
-  const directorySheet = ss.getSheetByName("Client Directory");  // Source of client metadata
+  const masterSheet = ss.getSheetByName("Master Tracker");
+  const directorySheet = ss.getSheetByName("Client Directory");
 
   // === Timezone and parent Drive folder for client subfolders ===
-  const timeZone = ss.getSpreadsheetTimeZone();  // For formatting dates
-  const parentFolderId = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-';  // Master folder for all client folders
-  const parentFolder = DriveApp.getFolderById(parentFolderId);  // Drive folder object
+  const timeZone = ss.getSpreadsheetTimeZone();
+  const parentFolderId = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-';
+  const parentFolder = DriveApp.getFolderById(parentFolderId);
 
-  // === Calculate last month’s label and timestamp ===
+  // === Date labeling and logging ===
   const today = new Date();
   today.setMonth(today.getMonth() - 1);
   const monthLabel = Utilities.formatDate(today, timeZone, "MMMM yyyy");
   const timestamp = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
 
-  // === Ensure Document Summary tab exists ===
+  // === Summary sheet prep ===
   const summarySheet = ss.getSheetByName("Document Summary") || ss.insertSheet("Document Summary");
   summarySheet.clear();
   summarySheet.appendRow(["Client Name", "Email", "Doc URL", "Timestamp"]);
@@ -66,7 +65,7 @@ function monthlyRolloverAndCreateDocs() {
       return;
     }
 
-    // === Create summary doc ===
+    // === Create and write to Google Doc ===
     const doc = DocumentApp.create(docName);
     const body = doc.getBody();
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
@@ -96,4 +95,69 @@ function monthlyRolloverAndCreateDocs() {
   });
 
   ui.alert(`✅ ${createdCount} support summaries were created.`);
+}
+
+
+/**
+ * getOrCreateClientFolder
+ *
+ * Locates or creates a Google Drive folder for a client within the parent folder.
+ */
+function getOrCreateClientFolder(parentFolder, clientName) {
+  const folders = parentFolder.getFoldersByName(clientName);
+  return folders.hasNext() ? folders.next() : parentFolder.createFolder(clientName);
+}
+
+
+/**
+ * resetFormulasInMasterTracker
+ *
+ * Re-applies formulas in columns G–J of the Master Tracker for all populated rows.
+ */
+function resetFormulasInMasterTracker() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Master Tracker");
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  for (let i = 2; i <= lastRow; i++) {
+    const client = sheet.getRange(i, 2).getValue();
+    if (!client) continue;
+
+    sheet.getRange(i, 7).setFormula(`=IF(F${i}=0, 0, MAX(D${i}-F${i}, 0))`);  // Column G
+    sheet.getRange(i, 8).setFormula(`=IF(F${i}=0, 0, IF(F${i}<=D${i}, 0, MIN(F${i}-D${i}, E${i})))`);  // Column H
+    sheet.getRange(i, 9).setFormula(`=IF(H${i}="", "", E${i}-H${i})`);  // Column I
+    sheet.getRange(i,10).setFormula(`=IF(AND(D${i}=0, E${i}<0), ABS(E${i}), 0)`);  // Column J
+  }
+
+  SpreadsheetApp.getUi().alert("✅ Formulas in columns G–J were reset.");
+}
+
+
+/**
+ * clearDocAndFolderLinks
+ *
+ * Wipes any previous HYPERLINKs or folder URLs from columns N and T on the Master Tracker.
+ */
+function clearDocAndFolderLinks() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Master Tracker");
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  sheet.getRange(2, 14, lastRow - 1).clearContent(); // Column N
+  sheet.getRange(2, 20, lastRow - 1).clearContent(); // Column T
+  SpreadsheetApp.getUi().alert("🧹 Cleared support summary and folder links from columns N and T.");
+}
+
+
+/**
+ * onOpen
+ *
+ * Adds a custom menu called "Client Tools" for easier script access.
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('🗂 Client Tools')
+    .addItem('Run Monthly Rollover & Docs', 'monthlyRolloverAndCreateDocs')
+    .addItem('Reset Master Tracker Formulas', 'resetFormulasInMasterTracker')
+    .addItem('Clear Doc & Folder Links', 'clearDocAndFolderLinks')
+    .addToUi();
 }
