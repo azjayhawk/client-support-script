@@ -1,3 +1,6 @@
+# Access to Google Sheett
+https://docs.google.com/spreadsheets/d/1j0h_R7IP8FkVcKGcygILeJe_HURfci0SkXjiJryPYZM/edit?gid=67389472#gid=67389472
+
 # client-support-script
 Google Apps Script for managing monthly client docs
 # Support Automation Script
