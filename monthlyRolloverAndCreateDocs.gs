@@ -1,51 +1,76 @@
 // === Main Monthly Automation Script ===
 /**
+/**
  * monthlyRolloverAndCreateDocs
  *
  * Runs the end-of-month rollover process:
  * - Identifies the prior month
  * - Iterates over each Active client in "Master Tracker"
  * - Creates and logs a support summary Google Doc
+ * - Dynamically calculates uncovered overage from Column I (Remaining Block)
  */
 function monthlyRolloverAndCreateDocs() {
+  // === DRY RUN mode: true = test only (no docs created), false = live run
   const DRY_RUN = false;
 
-  // === Spreadsheet and UI references ===
-  const ss = SpreadsheetApp.getActiveSpreadsheet();  // Reference to spreadsheet
-  const ui = SpreadsheetApp.getUi();  // UI for alerts
+  // === Spreadsheet and UI references
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
 
-  // === Primary data sheets ===
+  // === Primary data sheets
   const masterSheet = ss.getSheetByName("Master Tracker");
   const directorySheet = ss.getSheetByName("Client Directory");
 
-  // === Timezone and parent Drive folder for client subfolders ===
+  // === Timezone and parent folder setup for Google Docs
   const timeZone = ss.getSpreadsheetTimeZone();
-  const parentFolderId = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-';
+  const parentFolderId = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-'; // Root folder ID for client folders
   const parentFolder = DriveApp.getFolderById(parentFolderId);
 
-  // === Date labeling and logging ===
+  // === Determine previous month and timestamp
   const today = new Date();
   today.setMonth(today.getMonth() - 1);
   const monthLabel = Utilities.formatDate(today, timeZone, "MMMM yyyy");
   const timestamp = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
 
-  // === Summary sheet prep ===
+  // === Ensure Document Summary sheet exists and clear it
   const summarySheet = ss.getSheetByName("Document Summary") || ss.insertSheet("Document Summary");
   summarySheet.clear();
   summarySheet.appendRow(["Client Name", "Email", "Doc URL", "Timestamp"]);
 
+  // === Load all rows from Master Tracker (excluding headers)
   const dataRange = masterSheet.getDataRange();
   const data = dataRange.getValues();
   const rows = data.slice(1);
+
   let createdCount = 0;
 
-  // === Process each client row ===
+  // === Iterate through each row/client
   rows.forEach((row, i) => {
     const rowNum = i + 2;
-    const [ , clientName, , , , , , blockUsed, remainingBlock, uncoveredOverage, , , clientEmail, firstName, , status, domainExpire, accessToGA ] = row;
+
+    // === Destructure key columns for clarity
+    const [
+      , // A - Month
+      clientName,       // B
+      , ,               // C–D
+      blockAvailable,   // E
+      hoursUsed,        // F
+      overageBeyondPlan,// G
+      blockUsed,        // H
+      remainingBlock,   // I
+      , ,               // J–K
+      clientEmail,      // L (was column M)
+      firstName,        // M (was column O)
+      ,                 // N (Last Name)
+      status,           // O (was Q)
+      domainExpire,     // P
+      accessToGA        // Q
+    ] = row;
+
     const normalizedStatus = typeof status === "string" ? status.trim().toLowerCase() : "";
     const trimmedName = typeof clientName === "string" ? clientName.trim() : "";
 
+    // === Skip if client is not active or has no name
     if (!trimmedName || normalizedStatus !== "active") {
       console.log(`⚠️ Skipping row ${rowNum}: Name="${trimmedName}" | Status="${normalizedStatus}"`);
       return;
@@ -54,54 +79,68 @@ function monthlyRolloverAndCreateDocs() {
     const docName = `${monthLabel} - ${clientName}`;
     const clientFolder = getOrCreateClientFolder(parentFolder, clientName);
 
-    // Delete old doc if already exists
+    // === Trash any previous docs with same name
     const existingFiles = clientFolder.getFilesByName(docName);
     while (existingFiles.hasNext()) {
       existingFiles.next().setTrashed(true);
     }
 
+    // === DRY RUN mode: log and skip creation
     if (DRY_RUN) {
       console.log(`🟡 Dry run - would have created doc for ${clientName}`);
       return;
     }
 
-    // === Create and write to Google Doc ===
+    // === Create the Google Doc
     const doc = DocumentApp.create(docName);
     const body = doc.getBody();
+
+    // === Add RadiateU logo
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
     body.appendImage(logoBlob).setWidth(250);
 
+    // === Compose content
     body.appendParagraph("\nHello,");
     body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
     body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
     body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
-    body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
+
+    // Dynamically calculate uncovered overage if balance is negative
+    const uncovered = typeof remainingBlock === "number" && remainingBlock < 0
+      ? Math.abs(remainingBlock)
+      : 0;
+    body.appendParagraph(`Overage Hours (Uncovered): ${uncovered}`);
+
     body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
     body.appendParagraph("\nFor our clients on a monthly plan:");
     body.appendParagraph("🔐 Domain Expiration: " + (domainExpire || "N/A"));
     body.appendParagraph("📊 Access to Google Analytics: " + (accessToGA || "N/A"));
     body.appendParagraph("\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.");
     body.appendParagraph("\n*If you have trouble accessing your support summary, let us know and we’ll send you a PDF version.*");
+
     doc.saveAndClose();
 
+    // === Move to client folder and insert link
     const file = DriveApp.getFileById(doc.getId());
     file.moveTo(clientFolder);
     const docUrl = doc.getUrl();
     const hyperlink = `=HYPERLINK("${docUrl}", "Open Doc")`;
-    masterSheet.getRange(rowNum, 14).setFormula(hyperlink);
+    masterSheet.getRange(rowNum, 14).setFormula(hyperlink);  // Column N
+
+    // === Log to Document Summary tab
     summarySheet.appendRow([clientName, clientEmail || "N/A", docUrl, timestamp]);
     console.log(`✅ Created support doc for ${clientName}`);
     createdCount++;
   });
 
+  // === Final alert
   ui.alert(`✅ ${createdCount} support summaries were created.`);
 }
-
 
 /**
  * getOrCreateClientFolder
  *
- * Locates or creates a Google Drive folder for a client within the parent folder.
+ * Returns an existing folder for a client or creates a new one if missing.
  */
 function getOrCreateClientFolder(parentFolder, clientName) {
   const folders = parentFolder.getFoldersByName(clientName);
