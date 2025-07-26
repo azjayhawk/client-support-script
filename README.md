@@ -7,6 +7,7 @@ Google Apps Script system for managing monthly support reporting, client block h
 📋 Access to Live Sheet
 
 👉 Monthly Support Tracker (Production)
+https://docs.google.com/spreadsheets/d/1j0h_R7IP8FkVcKGcygILeJe_HURfci0SkXjiJryPYZM/edit?gid=2070410174#gid=2070410174
 
 ⸻
 
