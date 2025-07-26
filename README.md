@@ -1,51 +1,112 @@
-# Access to Google Sheet
-https://docs.google.com/spreadsheets/d/1j0h_R7IP8FkVcKGcygILeJe_HURfci0SkXjiJryPYZM/edit?gid=67389472#gid=67389472
+📊 Client Support Tracker – RadiateU
 
-# client-support-script
-Google Apps Script for managing monthly client docs
-# Support Automation Script
+Google Apps Script system for managing monthly support reporting, client block hour tracking, and auto-generating Google Docs from a central tracker.
 
-This is a Google Apps Script project used to automate monthly rollover tasks for client support documentation.
+⸻
 
-## ✨ What It Does
+📋 Access to Live Sheet
 
-This script:
+👉 Monthly Support Tracker (Production)
 
-- Identifies the previous month
-- Iterates over all active clients in the **"Master Tracker"** Google Sheet
-- Creates a support summary **Google Doc** for each client
-- Logs those documents in the sheet (instead of emailing them)
+⸻
 
-## 🚀 How to Use (In Google Sheets)
+✨ What It Does
 
-1. Open the Google Sheet that this script is attached to
-2. Go to **Extensions > Apps Script**
-3. Run the function: `monthlyRolloverAndCreateDocs()`
-4. Optionally enable the `Client Tools` menu to run it from the UI
+This script automates the monthly rollover for RadiateU’s client support reporting process:
+	•	Detects the previous month (e.g., “June 2025”)
+	•	Iterates over all Active clients in the Master Tracker
+	•	Generates branded Google Docs (support summaries) for each client
+	•	Logs document links and folder paths in the tracker
+	•	Resets calculated formulas (overage, block usage, deficit warnings)
+	•	Keeps client folders organized in Google Drive
+	•	Avoids duplicate creation with DRY_RUN preview mode
 
-> 🔒 You must have access to the connected Drive folders and spreadsheet for the script to function.
+⸻
 
-## 📁 Project Structure
+🚀 How to Use (in Google Sheets)
+	1.	Open the sheet:
+Go to Extensions > Apps Script
+	2.	Enable dry-run preview:
+Edit this line in the script to avoid file creation:
 
-| File                            | Purpose                                      |
-|-------------------------------|----------------------------------------------|
-| `monthlyRolloverAndCreateDocs.gs` | Main function to generate monthly docs      |
-| `appsscript.json`              | Script manifest (controls file settings)     |
-| `.clasp.json`                  | CLASP config (don’t upload this to GitHub)   |
-| `README.md`                    | You're reading it! 😄                         |
+const DRY_RUN = true;
 
-## 💡 Powered By
 
-- [Google Apps Script](https://developers.google.com/apps-script)
-- [CLASP](https://developers.google.com/apps-script/guides/clasp) – command-line tool to sync code
-- [GitHub](https://github.com) – version control & backup
+	3.	Run the function manually:
+Run monthlyRolloverAndCreateDocs() from the script editor or
+from the sheet menu:
+🗂 Client Tools > Run Monthly Rollover & Docs
+	4.	Verify output:
+	•	Docs created in Drive
+	•	Column N: support doc links
+	•	Column T: client folder URLs
+	•	Document Summary tab: audit trail
+	5.	Set DRY_RUN = false when ready to create final docs
 
----
+⸻
 
-## 🛠️ Developer Notes
+🧰 Client Tools Menu
 
-- If you want to test without creating files, set `DRY_RUN = true` in the script.
-- To update from your computer to Google Apps Script, run:
+Menu Item	Function
+Run Monthly Rollover & Docs	Generates support summary Google Docs
+Reset Master Tracker Formulas	Refreshes Columns G–J (Overage, Block Used, etc.)
+Clear Doc & Folder Links	Clears Columns N (Doc Link) and T (Folder URL)
+(Optional additions)	insertNewClientIntoDirectory() and insertAllMissingClients() available in full script
 
-```bash
-clasp push
+
+⸻
+
+🗂 Sheet Architecture
+
+Master Tracker Columns
+
+Column	Description
+A	Month (e.g., “July 2025”)
+B	Client Name
+C	Plan Type
+D	Monthly Plan Hours
+E	Block Hours Available (manually pasted at month end)
+F	Hours Used (from Time Entry)
+G	Overage Beyond Monthly Hours (hrs)
+H	Block Hours Used
+I	Block Hours Remaining
+J	Block Deficit Warning (hrs) (shows if Block < 0 & no monthly plan)
+K	Notes
+M–T	Client Email, Doc URL, First Name, Status, GA access, Folder URL
+
+
+⸻
+
+📁 Project Structure
+
+File	Purpose
+monthlyRolloverAndCreateDocs.gs	Main logic – creates documents
+resetFormulasInMasterTracker.gs	Utility – resets formulas in columns G–J
+helpers.gs	(optional) Utility functions like folder creation, sorting
+appsscript.json	Script manifest
+README.md	Documentation
+
+
+⸻
+
+💡 Developer Notes
+	•	Use DRY_RUN = true for test runs – no docs created
+	•	Docs are replaced each time with the same filename
+	•	Block Deficit Warning column (J) is only visual – not included in reports
+	•	For full month-end checklist, see the Instructions Doc
+
+⸻
+
+🛠 Powered By
+	•	Google Apps Script
+	•	CLASP
+	•	GitHub – version history & backups
+
+⸻
+
+🧪 CLASP Command Tips
+
+clasp login         # authenticate once
+clasp pull          # pull latest code from Apps Script
+clasp push          # push local code to Apps Script
+clasp open          # open the script editor in browser
