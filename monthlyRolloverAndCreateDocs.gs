@@ -121,8 +121,8 @@ function resetFormulasInMasterTracker() {
     // G - Overage Beyond Monthly Hours (hrs)
     sheet.getRange(i, 7).setFormula(`=IF(F${i}=0, 0, MAX(F${i} - D${i}, 0))`);
 
-    // H - Block Hours Used (fix to avoid negative usage when block balance is negative)
-    sheet.getRange(i, 8).setFormula(`=IF(F${i}=0, 0, IF(OR(E${i}<=0, F${i}<=D${i}), 0, MIN(F${i}-D${i}, E${i})))`);
+    // H - Block Hours Used (robust fix including negative block balances)
+sheet.getRange(i, 8).setFormula(`=IF(F${i}=0, 0, IF(F${i}<=D${i}, 0, IF(E${i}<=0, F${i}-D${i}, MIN(F${i}-D${i}, E${i}))))`);
 
     // I - Block Remaining
     sheet.getRange(i, 9).setFormula(`=IF(H${i}="", "", E${i}-H${i})`);
