@@ -1,140 +1,154 @@
-# ✅ **Monthly Checklist**
+✅ Monthly Checklist
 
-RadiateU Client Reporting Use this checklist to guide your monthly process for generating client support summaries, updating data, and delivering reports.
+RadiateU Client Reporting
+Use this checklist to guide your monthly process for generating support summaries, verifying data accuracy, and delivering reports.
 
----
+⸻
 
-### ✅ 1\. Before Running the Script
+✅ 1. Before Running the Script
 
-**Prep your data and check for accuracy.**
+Prep your data and confirm accuracy.
+  • Ensure DRY_RUN mode is ON
+Open the Apps Script (Extensions > Apps Script) and confirm:
 
-- **Ensure DRY\_RUN mode is ON:** Open the script and confirm:  
-  const DRY\_RUN \= true;  
-- **Sort Master Tracker:** Use the 🗂 Client Tools menu → **Sort Master Tracker A–Z**  
-- **Time Entry tab:**  
-  - Copy/paste weekly time entries into appropriate columns (format: hh:mm)  
-  - Let formulas auto-calculate Total (Column M) and Decimal Hours (Column L)  
-- **Block Carryover NOT needed yet:** Skip Column E for now — you’ll fill that in **after** monthly rollover is complete (see Step 5).
+const DRY_RUN = true;
 
----
 
-### ✅ 2\. Run the Script (Dry Run Mode)
+  • Sort the Master Tracker
+From the 🗂 Client Tools menu → select Sort Master Tracker A–Z
+  • Time Entry Tab:
+  • Copy/paste your weekly time entries (format: hh:mm) into the appropriate columns
+  • Let built-in formulas auto-calculate:
+  • Column L → Decimal Hours
+  • Column M → Total Duration
+  • These totals feed automatically into Column F of the Master Tracker
 
-**Preview output and verify everything before sending anything to clients.**
+❌ Do NOT paste block hours yet – you’ll do that in Step 5.
 
-- Go to the Apps Script Editor (Extensions \> Apps Script)  
-- Run: `monthlyRolloverAndCreateDocs()`  
-- Verify:  
-  - ✅ Only Active clients are processed (Status \= Active)  
-  - ✅ Support summaries appear in each client folder  
-  - ✅ Master Tracker Column N (Support Summary Link) contains working doc links  
-  - ✅ Column T contains the correct Folder URL  
-  - ✅ Document Summary sheet shows accurate results
+⸻
 
----
+✅ 2. Run the Script (Dry Run Mode)
 
-### ✅ 3\. Enter Usage & Finalize Data
+This will preview the results and confirm doc generation logic is working correctly.
+  • Open the Apps Script Editor
+  • Run:
 
-**Use this step to verify monthly usage and block hour activity.**
+monthlyRolloverAndCreateDocs()
 
-- In the **Master Tracker**:  
-  - Column F (Hours Used) is pulled from Time Entry tab  
-  - Columns G–J are auto-calculated (Overage Beyond Monthly Hours, Block Used, Remaining Block, Block Deficit Warning (hrs))  
-- **Check Column H (Block Used)** is accurate based on usage vs. monthly plan  
-- Adjust any rows manually as needed (e.g., transition clients or edge cases)
 
----
+  • Check the following:
+  • ✅ Only clients with Status = Active are included
+  • ✅ One Google Doc is created in each client’s folder
+  • ✅ Column N (Support Summary Link) has working hyperlinks
+  • ✅ Column T contains the correct client Folder URL
+  • ✅ The Document Summary sheet includes a list of documents and timestamps
 
-### ✅ 4\. Deliver Reports
+⸻
 
-You now have two delivery options:
+✅ 3. Enter Usage & Finalize Data
 
-#### Option A – YAMM (Yet Another Mail Merge)
+At this point, you’ll review hours used and validate calculations.
+  • In the Master Tracker:
+  • Column F = Hours Used (from Time Entry)
+  • Columns G–I auto-calculate based on usage:
+  • G = Overage Beyond Monthly Hours
+  • H = Block Hours Used
+  • I = Block Hours Remaining
+  • Column J (Block Deficit Warning) flags only when a client has:
+  • 0 Monthly Hours, and
+  • A negative block balance
 
-Use YAMM to send personalized emails with support summaries.
+🧠 Tip: You may ignore Column J for billing/reporting. It’s a visual alert for internal use only.
 
-- Use the links in Column N (Support Summary Link)  
-- Pull email addresses from Column M
+  • Adjust rows manually if needed (e.g., new/transitioning clients)
 
-#### Option B – WP Umbrella (Monthly Automation)
+⸻
 
-Add each client’s folder link (Column K from Client Directory) into your WP Umbrella recurring task so they can access support summaries monthly.
+✅ 4. Deliver Reports
 
----
+You have two supported options:
 
-### ✅ 5\. End-of-Month Finalization
+Option A – YAMM (Yet Another Mail Merge)
+  • Use Column M (Email) for sending
+  • Use Column N (Support Summary Link) for document URLs
 
-**These steps should be done at the end of the current month.**
+Option B – WP Umbrella Integration
+  • Copy each client’s Folder URL from Column T in the Master Tracker
+  • Paste into their recurring WP Umbrella reporting task for ongoing access
 
-- Open the **Master Tracker**:  
-  - **Copy values from Column I (Remaining Block)**  
-  - **Paste values only into Column E (Block Hours Available)**
+⸻
 
-  This locks in the carryover for next month while preserving visibility throughout the current month.
+✅ 5. End-of-Month Finalization
 
-- Rename the **Time Entry** tab (e.g., "Time Entry – July 2025") and create a new blank one for the next month  
-- Run the script again with `DRY_RUN = false` if you want to finalize and regenerate the docs cleanly  
-- Delete and regenerate support documents only if needed
+This locks in block carryover values for the next cycle.
+  • In the Master Tracker:
+  • Copy Column I (Block Hours Remaining)
+  • Paste values only into Column E (Block Hours Available)
 
----
+This makes Column E the starting balance for the next month while preserving visibility during the current cycle.
 
-# 📘 **Overview** 
+  • Rename the Time Entry tab (e.g., “Time Entry – July 2025”)
+  • Create a blank copy for the upcoming month
+  • Optional:
+  • Set DRY_RUN = false and re-run script for clean final copies
+  • Re-run only if changes were made or documents need refreshing
 
-This Google Sheet manages:
+⸻
 
-- Monthly hours and support block usage  
-- Remaining time balances and overage calculations  
-- Report creation and delivery via Google Docs  
-- Optional email delivery using external tools (YAMM or WP Umbrella)
+📘 Overview
 
----
+This Google Sheet powers your full client support system:
+  • Tracks monthly hours and block hour usage
+  • Calculates remaining balances and overages
+  • Auto-generates branded Google Docs for each client
+  • Supports optional report delivery via email (YAMM) or WP Umbrella
+  • Reduces manual entry through linked formulas and scripts
 
-### **✅ Master Tracker – Column Guide**
+⸻
 
-| Column | Description |
-| ----- | :---- |
-| A | **Month** (e.g., “July 2025”) – inserted by script |
-| B | **Client Name** – dropdown from helper sheet (active clients) |
-| C | **Plan Type** – auto-filled via formula from Client Directory |
-| D | **Monthly Plan Hours** – VLOOKUP from Plans tab |
-| E | **Block Hours Available** – *manually pasted at end of month* |
-| F | **Hours Used** – VLOOKUP from Time Entry tab |
-| G | **Overage Beyond Monthly Hours (hrs)** – formula-driven |
-| H | **Block Hours Used** – formula-driven |
-| I | **Block Hours Remaining** – formula-driven |
-| J | **Block Deficit Warning (hrs)** – formula-driven |
-| K | **Cost** – calculated if uncovered time exists |
-| L | **Notes** – optional manual input |
-| M | **Client Email** – auto-filled from Client Directory |
-| N | **Support Summary Link** – script inserts doc link |
-| O | **First Name** – formula-filled from Client Directory |
-| P | **Last Name** – formula-filled from Client Directory |
-| Q | **Status** – used to filter clients (Active only) |
-| R | **Domain Expire** – formula-filled from Client Directory |
-| S | **Access to GA** – formula-filled from Client Directory |
-| T | **Folder URL** – auto-filled by script |
+✅ Master Tracker – Column Guide
 
----
+Column  Description
+A Month (e.g., “July 2025”) – inserted by script
+B Client Name – dropdown from helper sheet (Active clients only)
+C Plan Type – auto-filled from Client Directory
+D Monthly Plan Hours – auto-filled from Plans tab
+E Block Hours Available – manually pasted at end of month
+F Hours Used – pulled from Time Entry
+G Overage Beyond Monthly Hours (hrs) – shows how many hours exceeded monthly allotment
+H Block Hours Used – how many of the overage hours came from the block
+I Block Hours Remaining – what’s left after usage
+J Block Deficit Warning (hrs) – only applies if Monthly Plan = 0 and Block goes negative
+K Cost – calculated separately if needed
+L Notes – freeform manual input
+M Client Email – auto-filled from Client Directory
+N Support Summary Link – script inserts link
+O First Name – auto-filled
+P Last Name – auto-filled
+Q Status – must be “Active” to trigger report
+R Domain Expire – auto-filled
+S Access to GA – auto-filled
+T Folder URL – script auto-generates this path
 
-### 
 
-### **🛠 Script Functions Summary**
+⸻
 
-| Function | Purpose |
-| :---- | :---- |
-| monthlyRolloverAndCreateDocs() | Generates support summary documents for each **Active** client |
-| resetFormulasInMasterTracker() | Resets formulas in columns **G–J** (Overage, Block, etc.) for all clients |
-| insertNewClientIntoDirectory() | Prompts user to add a client to the **Client Directory** |
-| insertAllMissingClients() | Adds any clients from the **helper sheet** who are missing from the Master Tracker |
-| clearDocAndFolderLinks() | Clears old links from **columns N and T** |
-| onOpen() | Loads the **Client Tools** menu with all script options |
+🛠 Script Functions Summary
 
----
+Function  Purpose
+monthlyRolloverAndCreateDocs()  Generates support summary Google Docs for all Active clients
+resetFormulasInMasterTracker()  Refreshes formulas in Columns G–J to maintain accurate calculations
+insertNewClientIntoDirectory()  Prompts user to add a client (domain + name) into the Client Directory
+insertAllMissingClients() Inserts any missing clients from helper sheet into the Master Tracker
+clearDocAndFolderLinks()  Clears Columns N and T for a clean doc/folder refresh
+onOpen()  Loads the “🗂 Client Tools” menu automatically when sheet opens
 
-# 📌 **Final Notes**
 
-- Use the **Client Directory** as your source of truth  
-- Clients must be marked **Active** to receive reports  
-- The script automatically skips clients with blank names or inactive statuses  
-- The "Support Summary Link" column (N) is refreshed each time the script runs
+⸻
 
+📌 Final Tips
+  • Don’t forget to set DRY_RUN = false before finalizing
+  • Clients must be Active to receive a doc
+  • No doc is created if Client Name is blank
+  • You may delete docs manually or allow the script to overwrite when re-run
+  • The “Support Summary Link” in Column N refreshes with each run
