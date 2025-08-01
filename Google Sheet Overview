@@ -1,0 +1,63 @@
+Google Sheet Overview
+
+Client Support Tracker URL - https://docs.google.com/spreadsheets/d/1j0h_R7IP8FkVcKGcygILeJe_HURfci0SkXjiJryPYZM/edit?gid=2070410174#gid=2070410174
+
+📘 Overview 
+This Google Sheet manages:
+
+Monthly hours and support block usage
+Remaining time balances and overage calculations
+Report creation and delivery via Google Docs
+Optional email delivery using external tools (YAMM or WP Umbrella)
+
+✅ Master Tracker – Column Guide
+Column
+Description
+A Month (e.g., “July 2025”) – inserted by script
+B Client Name – dropdown from helper sheet (active clients)
+C Plan Type – auto-filled via formula from Client Directory
+D Monthly Plan Hours – VLOOKUP from Plans tab
+E Block Hours Available – manually pasted at end of month
+F Hours Used – VLOOKUP from Time Entry tab
+G Overage Beyond Monthly Hours (hrs) – formula-driven
+H Block Hours Used – formula-driven
+I Block Hours Remaining – formula-driven
+J Block Deficit Warning (hrs) – formula-driven
+K Cost – calculated if uncovered time exists
+L Notes – optional manual input
+M Client Email – auto-filled from Client Directory
+N Support Summary Link – script inserts doc link
+O First Name – formula-filled from Client Directory
+P Last Name – formula-filled from Client Directory
+Q Status – used to filter clients (Active only)
+R Domain Expire – formula-filled from Client Directory
+S Access to GA – formula-filled from Client Directory
+T Folder URL – auto-filled by script
+
+
+
+🛠 Script Functions Summary
+Function
+Purpose
+monthlyRolloverAndCreateDocs()
+Generates support summary documents for each Active client
+resetFormulasInMasterTracker()
+Resets formulas in columns G–J (Overage, Block, etc.) for all clients
+insertNewClientIntoDirectory()
+Prompts user to add a client to the Client Directory
+insertAllMissingClients()
+Adds any clients from the helper sheet who are missing from the Master Tracker
+clearDocAndFolderLinks()
+Clears old links from columns N and T
+onOpen()
+Loads the Client Tools menu with all script options
+
+
+📌 Final Notes
+
+Use the Client Directory as your source of truth
+Clients must be marked Active to receive reports
+The script automatically skips clients with blank names or inactive statuses
+The "Support Summary Link" column (N) is refreshed each time the script runs
+
+

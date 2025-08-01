@@ -1,0 +1,75 @@
+✅ Checklist: Add a New Client to the System
+Use this step-by-step checklist to successfully onboard a new client into the RadiateU support tracking system.
+
+🔹 Step 1: Add to Client Directory
+Open the Client Directory tab.
+Scroll to the bottom of the list (do NOT insert in the middle).
+Enter the following in a new row:
+Column A: Client Name (e.g., Right Stuff Media)
+Column B: Plan Type (e.g., Starter, Basic, Pro)
+Column C: Client Email
+Column D: Status → Set to Active
+Columns E–J: Leave blank unless additional metadata is required
+Leave Column K (Folder URL) blank — it will be auto-filled later.
+⚠️ Important: Do not sort the Client Directory immediately — let the helper sheet manage sync for now.
+
+🔹 Step 2: Ensure Helper Sheet Updates
+Open the Active Clients Sorted tab (your helper sheet).
+Confirm your new client appears in the list.
+This may take a few seconds via the formula.
+If it doesn’t appear, check that Status = Active and there are no typos.
+
+
+
+🔹 Step 3: Add to Master Tracker
+✅ Recommended Method:
+Use the 🗂 Client Tools > Insert All Missing Clients
+ → This will automatically:
+Detect any clients from the helper sheet not yet in the Master Tracker
+Insert them alphabetically
+Populate the correct formulas and structure
+
+
+⚠️ Do NOT manually insert rows into the Master Tracker to avoid breaking formulas.
+
+🔹 Step 4: Confirm Sync in Master Tracker
+In the Master Tracker, verify the new client row contains:
+Column Confirm
+B      Client name is populated
+C      Plan Type auto-filled
+D      Monthly Hours filled (via VLOOKUP)
+M      Email filled
+O–Q    First name, Last name, Status populated
+G–J    Formulas are working and not showing #REF!
+
+
+🔹 Step 5: (Optional) Add Initial Block Hours
+If the client is starting with a block balance:
+In Master Tracker > Column E (Block Hours Available)
+
+ → Manually enter their starting balance (e.g., 10.0)
+
+
+This will feed into downstream block usage logic and summaries.
+
+
+
+🔹 Step 6: (Optional) Trigger Folder/Doc Creation
+If you’re preparing monthly documents for this new client:
+Use Client Tools > Run Monthly Rollover & Docs (with DRY_RUN first)
+
+
+This will:
+Create a support folder
+Generate a Google Doc
+Link the folder URL in the Client Directory (Column K)
+Insert doc link into Master Tracker (Column N)
+
+✅ Final Checks
+✅ Client appears in both Master Tracker and Helper Sheet
+✅ Formulas and references are working
+✅ Folder and document (if created) are linked properly
+✅ Email address is correct for mail merge or automation
+
+
+
