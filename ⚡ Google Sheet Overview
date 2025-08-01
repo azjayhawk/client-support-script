@@ -11,28 +11,28 @@ Report creation and delivery via Google Docs
 Optional email delivery using external tools (YAMM or WP Umbrella)
 
 ✅ Master Tracker – Column Guide
-Column
-Description
-A Month (e.g., “July 2025”) – inserted by script
-B Client Name – dropdown from helper sheet (active clients)
-C Plan Type – auto-filled via formula from Client Directory
-D Monthly Plan Hours – VLOOKUP from Plans tab
-E Block Hours Available – manually pasted at end of month
-F Hours Used – VLOOKUP from Time Entry tab
-G Overage Beyond Monthly Hours (hrs) – formula-driven
-H Block Hours Used – formula-driven
-I Block Hours Remaining – formula-driven
-J Block Deficit Warning (hrs) – formula-driven
-K Cost – calculated if uncovered time exists
-L Notes – optional manual input
-M Client Email – auto-filled from Client Directory
-N Support Summary Link – script inserts doc link
-O First Name – formula-filled from Client Directory
-P Last Name – formula-filled from Client Directory
-Q Status – used to filter clients (Active only)
-R Domain Expire – formula-filled from Client Directory
-S Access to GA – formula-filled from Client Directory
-T Folder URL – auto-filled by script
+
+Column   Description
+A        Month (e.g., “July 2025”) – inserted by script
+B        Client Name – dropdown from helper sheet (active clients)
+C        Plan Type – auto-filled via formula from Client Directory
+D        Monthly Plan Hours – VLOOKUP from Plans tab
+E        Block Hours Available – manually pasted at end of month
+F        Hours Used – VLOOKUP from Time Entry tab
+G        Overage Beyond Monthly Hours (hrs) – formula-driven
+H        Block Hours Used – formula-driven
+I        Block Hours Remaining – formula-driven
+J        Block Deficit Warning (hrs) – formula-driven
+K        Cost – calculated if uncovered time exists
+L        Notes – optional manual input
+M        Client Email – auto-filled from Client Directory
+N        Support Summary Link – script inserts doc link
+O        First Name – formula-filled from Client Directory
+P        Last Name – formula-filled from Client Directory
+Q        Status – used to filter clients (Active only)
+R        Domain Expire – formula-filled from Client Directory
+S        Access to GA – formula-filled from Client Directory
+T        Folder URL – auto-filled by script
 
 
 
