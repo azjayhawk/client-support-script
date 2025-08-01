@@ -272,3 +272,24 @@ function onOpen() {
     .addItem('Clear Doc & Folder Links', 'clearDocAndFolderLinks')
     .addToUi();
 }
+
+/**
+ * onEdit
+ *
+ * Automatically adds a timestamp to Column L of Client Directory
+ * whenever any cell in columns A–K is edited.
+ */
+function onEdit(e) {
+  const sheet = e.source.getSheetByName("Client Directory");
+  if (!sheet || sheet.getName() !== e.range.getSheet().getName()) return;
+
+  const editedColumn = e.range.getColumn();
+  const editedRow = e.range.getRow();
+
+  // Only trigger for rows 2+ and columns A–K (1–11)
+  if (editedRow < 2 || editedColumn > 11) return;
+
+  const timeZone = e.source.getSpreadsheetTimeZone();
+  const now = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
+  sheet.getRange(editedRow, 12).setValue(now); // Column L
+}
