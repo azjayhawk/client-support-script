@@ -104,13 +104,11 @@ function getOrCreateClientFolder(parentFolder, clientName) {
 /**
  * updateMasterTrackerFormulas
  * Rewrites static formulas in F (Hours Used), H (Block Used), I (Remaining Block)
- * and M–S (Client Directory lookups), trimming VLOOKUP range to only Active clients.
+ * and M–S (Client Directory lookups), using FILTER-based VLOOKUP to ensure only Active clients are referenced.
  */
 function updateMasterTrackerFormulas() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const trackerSheet = ss.getSheetByName("Master Tracker");
-  const directorySheet = ss.getSheetByName("Client Directory");
-
   const startRow = 2;
   const lastRow = trackerSheet.getLastRow();
   const clientNames = trackerSheet.getRange(startRow, 2, lastRow - 1, 1).getValues();
@@ -118,7 +116,6 @@ function updateMasterTrackerFormulas() {
 
   // === F, H, I columns ===
   const colF = [], colH = [], colI = [];
-
   for (let i = 0; i < clientNames.length; i++) {
     const row = i + startRow;
     const b = clientNames[i][0];
@@ -129,16 +126,11 @@ function updateMasterTrackerFormulas() {
     colH.push([`=IF(F${row}=0, 0, IF(F${row}<=D${row}, 0, IF(E${row}<=0, F${row}-D${row}, MIN(F${row}-D${row}, E${row}))))`]);
     colI.push([`=MAX(E${row} - H${row}, 0)`]);
   }
-
   trackerSheet.getRange(startRow, 6, colF.length, 1).setFormulas(colF); // F
   trackerSheet.getRange(startRow, 8, colH.length, 1).setFormulas(colH); // H
   trackerSheet.getRange(startRow, 9, colI.length, 1).setFormulas(colI); // I
 
-  // === M–S from Client Directory, Active clients only ===
-  const directoryData = directorySheet.getRange("A2:J").getValues();
-  const activeRows = directoryData.filter(row => row[3] === "Active");
-  const lastActiveRow = activeRows.length + 1; // offset for A2
-
+  // === M–S using FILTER-based VLOOKUP ===
   const mToS = {
     M: { col: 13, index: 3 },
     O: { col: 15, index: 7 },
@@ -148,13 +140,13 @@ function updateMasterTrackerFormulas() {
     S: { col: 19, index: 10 },
   };
 
-  Object.entries(mToS).forEach(([colLetter, cfg]) => {
+  Object.entries(mToS).forEach(([_, cfg]) => {
     const output = [];
     for (let i = 0; i < clientNames.length; i++) {
       const row = i + startRow;
       const b = clientNames[i][0];
       if (!b) { output.push([""]); continue; }
-      const formula = `=IF(B${row}="", "", IFERROR(VLOOKUP(TO_TEXT(B${row}), 'Client Directory'!A2:J${lastActiveRow + 1}, ${cfg.index}, FALSE), ""))`;
+      const formula = `=IF(B${row}="", "", IFERROR(VLOOKUP(TO_TEXT(B${row}), FILTER('Client Directory'!A:J, 'Client Directory'!D:D = "Active"), ${cfg.index}, FALSE), ""))`;
       output.push([formula]);
     }
     trackerSheet.getRange(startRow, cfg.col, output.length, 1).setFormulas(output);
