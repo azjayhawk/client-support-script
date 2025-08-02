@@ -156,6 +156,7 @@ const mToS = {
 }
 
 /**
+ * 
  * PURPOSE:
  * This function hides rows in the "Master Tracker" sheet for clients marked as
  * "Inactive" or "Transitioning" in the Status column.
@@ -163,7 +164,7 @@ const mToS = {
  * 
  * Assumes:
  * - Header is in Row 1
- * - Status is in Column P (Column 16)
+ * - Status is in Column O (Column 15)
  *
  * USAGE:
  * - Automatically runs from the "Client Tools" custom menu.
@@ -173,21 +174,31 @@ const mToS = {
 function hideInactiveAndTransitioningRows() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Master Tracker');
-  const data = sheet.getDataRange().getValues();
 
-  const STATUS_COL = 17; // Column Q = Status
-  const START_ROW = 2;   // Skip header
+  const START_ROW = 2;
+  const STATUS_COL = 15; // ✅ Column O — corrected from Column Q
+  const numRows = sheet.getLastRow() - START_ROW + 1;
+  const data = sheet.getRange(START_ROW, 1, numRows, sheet.getLastColumn()).getDisplayValues();
 
-  // Unhide all rows first
+  // Unhide all rows before applying filter
   sheet.showRows(START_ROW, sheet.getMaxRows() - 1);
 
-  for (let i = START_ROW - 1; i < data.length; i++) {
-    const status = data[i][STATUS_COL - 1];
-    if (status === 'Inactive' || status === 'Transitioning') {
-      console.log(`🔴 Hiding row ${i + 1} for status "${status}"`);
-      sheet.hideRows(i + 1);
+  let hiddenCount = 0;
+
+  for (let i = 0; i < data.length; i++) {
+    const statusRaw = data[i][STATUS_COL - 1];
+    const status = statusRaw.toLowerCase().trim();
+
+    console.log(`Row ${i + START_ROW}: Status = "${statusRaw}" → "${status}"`);
+
+    if (status === 'inactive' || status === 'transitioning') {
+      sheet.hideRows(i + START_ROW);
+      console.log(`→ Hiding row ${i + START_ROW}`);
+      hiddenCount++;
     }
   }
+
+  console.log(`✅ Finished: ${hiddenCount} rows hidden.`);
 }
 
 /**
@@ -201,6 +212,51 @@ function hideInactiveAndTransitioningRows() {
 function unhideAllClientRows() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker');
   sheet.showRows(2, sheet.getMaxRows() - 1); // Unhide all rows below header
+}
+
+/**
+ * PURPOSE:
+ * Inserts a new client into the "Client Directory" sheet.
+ * Prompts the user for a client name, adds it to the next available row,
+ * and sets default values like status ("Active") and a timestamp.
+ *
+ * ASSUMPTIONS:
+ * - Column A: Client Name
+ * - Column D: Status ("Active", "Inactive", etc.)
+ * - Column L: Timestamp
+ *
+ * USAGE:
+ * - Access via the "Client Tools" menu.
+ * - Typically the first step in onboarding a new client.
+ */
+function insertNewClientIntoDirectory() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActive().getSheetByName("Client Directory");
+  const lastRow = sheet.getLastRow();
+
+  // Prompt for client name
+  const response = ui.prompt('Add New Client', 'Enter the client name (e.g., example.org):', ui.ButtonSet.OK_CANCEL);
+  if (response.getSelectedButton() !== ui.Button.OK) return;
+
+  const clientName = response.getResponseText().trim();
+  if (!clientName) {
+    ui.alert("Client name cannot be blank.");
+    return;
+  }
+
+  // Check for duplicates
+  const existingClients = sheet.getRange("A2:A" + lastRow).getValues().flat();
+  if (existingClients.includes(clientName)) {
+    ui.alert(`"${clientName}" already exists in the Client Directory.`);
+    return;
+  }
+
+  // Find first empty row
+  const targetRow = lastRow + 1;
+
+  sheet.getRange(targetRow, 1).setValue(clientName);         // Column A: Client Name
+  sheet.getRange(targetRow, 4).setValue("Active");           // Column D: Status
+  sheet.getRange(targetRow, 12).setValue(new Date());        // Column L: Timestamp
 }
 
 /**
