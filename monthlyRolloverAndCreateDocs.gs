@@ -277,61 +277,45 @@ function unhideAllClientRows() {
 
 /**
  * PURPOSE:
- * Adds a new client to the Client Directory and Master Tracker (if missing),
- * copying formulas from the Master Tracker template row (Row 2).
- *
- * Assumes:
- * - Client Directory columns: A = Client Name, B = Plan Type, C = Monthly Hours, D = Status
- * - Master Tracker columns: B = Client Name, C = Plan Type, D = Monthly Hours, O = Status, K = Email, M/N = First/Last
+ * Inserts a new client into the "Client Directory" sheet with default values.
+ * Ensures new entries follow the correct column order:
+ * A = Client Name
+ * B = Plan Type
+ * C = Email
+ * D = Status
+ * E = Client Partner
+ * 
+ * USAGE:
+ * - Run manually from the "Client Tools" menu.
+ * - Prompts the user to enter client details.
  */
-
 function insertNewClientIntoDirectory() {
   const ui = SpreadsheetApp.getUi();
-  const response = ui.prompt('Add New Client', 'Enter client info as: clientName, planType, monthlyHours, status, email, firstName, lastName', ui.ButtonSet.OK_CANCEL);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Client Directory');
 
-  if (response.getSelectedButton() !== ui.Button.OK) return;
+  // Prompt user for client info
+  const clientNamePrompt = ui.prompt('New Client', 'Enter the client domain or name (e.g., example.com):', ui.ButtonSet.OK_CANCEL);
+  if (clientNamePrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  const input = response.getResponseText().split(',').map(val => val.trim());
-  if (input.length < 7) {
-    ui.alert('❌ Please enter all 7 values.');
-    return;
-  }
+  const planPrompt = ui.prompt('Plan Type', 'Enter plan type (e.g., Starter-0, Pro, RadiateU-5):', ui.ButtonSet.OK_CANCEL);
+  if (planPrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  const [clientName, planType, monthlyHours, status, email, firstName, lastName] = input;
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const dirSheet = ss.getSheetByName('Client Directory');
-  const masterSheet = ss.getSheetByName('Master Tracker');
+  const emailPrompt = ui.prompt('Email', 'Enter client email address:', ui.ButtonSet.OK_CANCEL);
+  if (emailPrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  // Insert into Client Directory
-  dirSheet.appendRow([clientName, planType, monthlyHours, status, email, firstName, lastName]);
-  console.log(`✅ Added ${clientName} to Client Directory.`);
+  const partnerPrompt = ui.prompt('Client Partner', 'Enter Client Partner (if applicable):', ui.ButtonSet.OK_CANCEL);
+  if (partnerPrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  // Check if client is already in Master Tracker
-  const masterData = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues(); // Column B = Client Name
-  const isInMaster = masterData.some(row => row[0]?.toString().toLowerCase() === clientName.toLowerCase());
+  // Construct new row
+  const newRow = [];
+  newRow[0] = clientNamePrompt.getResponseText().trim(); // Column A
+  newRow[1] = planPrompt.getResponseText().trim();       // Column B
+  newRow[2] = emailPrompt.getResponseText().trim();      // Column C (corrected!)
+  newRow[3] = 'Active';                                   // Column D (default status)
+  newRow[4] = partnerPrompt.getResponseText().trim();    // Column E
 
-  if (!isInMaster) {
-    const TEMPLATE_ROW = 2;
-    const lastRow = masterSheet.getLastRow();
-    masterSheet.insertRowAfter(lastRow);
-
-    const templateRange = masterSheet.getRange(TEMPLATE_ROW, 1, 1, masterSheet.getLastColumn());
-    const newRowRange = masterSheet.getRange(lastRow + 1, 1, 1, masterSheet.getLastColumn());
-    templateRange.copyTo(newRowRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
-
-    // Fill in values
-    masterSheet.getRange(lastRow + 1, 2).setValue(clientName);
-    masterSheet.getRange(lastRow + 1, 3).setValue(planType);
-    masterSheet.getRange(lastRow + 1, 4).setValue(monthlyHours);
-    masterSheet.getRange(lastRow + 1, 15).setValue(status);       // Column O
-    masterSheet.getRange(lastRow + 1, 11).setValue(email);        // Column K
-    masterSheet.getRange(lastRow + 1, 13).setValue(firstName);    // Column M
-    masterSheet.getRange(lastRow + 1, 14).setValue(lastName);     // Column N
-
-    console.log(`✅ Also added ${clientName} to Master Tracker.`);
-  } else {
-    console.log(`ℹ️ ${clientName} is already in the Master Tracker.`);
-  }
+  sheet.appendRow(newRow);
+  ui.alert('✅ New client added to Client Directory.');
 }
 
 /**
