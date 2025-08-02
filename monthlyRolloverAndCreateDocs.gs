@@ -204,13 +204,13 @@ function insertAllMissingClients() {
     templateRange.copyTo(newRowRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
 
     // Fill in values from Client Directory
-    masterSheet.getRange(lastRow + 1, 2).setValue(client[0]); // Client Name
-    masterSheet.getRange(lastRow + 1, 3).setValue(client[1]); // Plan Type
-    masterSheet.getRange(lastRow + 1, 4).setValue(client[2]); // Monthly Hours
-    masterSheet.getRange(lastRow + 1, 15).setValue(client[3]); // Status (column O)
-    masterSheet.getRange(lastRow + 1, 11).setValue(client[4]); // Email (column K)
-    masterSheet.getRange(lastRow + 1, 13).setValue(client[5]); // First Name (M)
-    masterSheet.getRange(lastRow + 1, 14).setValue(client[6]); // Last Name (N)
+    masterSheet.getRange(lastRow + 1, 2).setValue(client[0]); // Client Name (Column A)
+    masterSheet.getRange(lastRow + 1, 3).setValue(client[1]); // Plan Type (Column B)
+    masterSheet.getRange(lastRow + 1, 4).setValue(client[2]); // Monthly Hours (Column C)
+    masterSheet.getRange(lastRow + 1, 15).setValue(client[3]); // Status (Column D)
+    masterSheet.getRange(lastRow + 1, 11).setValue(client[2]); // ✅ Email from Column C in Client Directory
+    masterSheet.getRange(lastRow + 1, 13).setValue(client[5]); // First Name (Column F)
+    masterSheet.getRange(lastRow + 1, 14).setValue(client[6]); // Last Name (Column G)
   });
 
   console.log(`✅ Inserted ${newClients.length} new client(s) into Master Tracker.`);
