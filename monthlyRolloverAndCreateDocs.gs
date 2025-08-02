@@ -131,14 +131,14 @@ function updateMasterTrackerFormulas() {
   trackerSheet.getRange(startRow, 9, colI.length, 1).setFormulas(colI); // I
 
   // === M–S using FILTER-based VLOOKUP ===
-  const mToS = {
-    M: { col: 13, index: 3 },
-    O: { col: 15, index: 7 },
-    P: { col: 16, index: 8 },
-    Q: { col: 17, index: 4 },
-    R: { col: 18, index: 9 },
-    S: { col: 19, index: 10 },
-  };
+const mToS = {
+  L: { col: 12, index: 3 },  // Support Summary Link
+  M: { col: 13, index: 7 },  // First Name
+  N: { col: 14, index: 8 },  // Last Name
+  O: { col: 15, index: 4 },  // Status
+  P: { col: 16, index: 9 },  // Domain Expire
+  Q: { col: 17, index: 10 }, // Access to GA
+};
 
   Object.entries(mToS).forEach(([_, cfg]) => {
     const output = [];
