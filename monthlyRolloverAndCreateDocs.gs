@@ -437,14 +437,13 @@ function addClientAndSync() {
     const newRow = masterSheet.getRange(insertAt + 1, 1, 1, masterSheet.getLastColumn());
     formulaRow.copyTo(newRow, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
 
-    // Fill in data from Client Directory
-    masterSheet.getRange(insertAt + 1, 2).setValue(client[0]); // Client Name
-    masterSheet.getRange(insertAt + 1, 3).setValue(client[1]); // Plan Type
-    masterSheet.getRange(insertAt + 1, 4).setValue(client[2]); // Monthly Hours
-    masterSheet.getRange(insertAt + 1, 15).setValue(client[3]); // Status (Col O)
-    masterSheet.getRange(insertAt + 1, 11).setValue(client[4]); // Email (Col K)
-    masterSheet.getRange(insertAt + 1, 13).setValue(client[5]); // First Name (Col M)
-    masterSheet.getRange(insertAt + 1, 14).setValue(client[6]); // Last Name (Col N)
+   // Fill in values from Client Directory into new Master Tracker row
+  masterSheet.getRange(lastRow + 1, 2).setValue(client[0]);  // Client Name (Column B)
+  masterSheet.getRange(lastRow + 1, 3).setValue(client[1]);  // Plan Type (Column C)
+  masterSheet.getRange(lastRow + 1, 11).setValue(client[2]); // ✅ Email (Column K)
+  masterSheet.getRange(lastRow + 1, 15).setValue(client[3]); // Status (Column O)
+  masterSheet.getRange(lastRow + 1, 13).setValue(client[5]); // First Name (Column M)
+  masterSheet.getRange(lastRow + 1, 14).setValue(client[6]); // Last Name (Column N)
 
     insertedCount++;
   });
