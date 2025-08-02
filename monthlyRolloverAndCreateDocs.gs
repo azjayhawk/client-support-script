@@ -175,16 +175,16 @@ function hideInactiveAndTransitioningRows() {
   const sheet = ss.getSheetByName('Master Tracker');
   const data = sheet.getDataRange().getValues();
 
-  const STATUS_COL = 16; // Column P
-  const START_ROW = 2;   // Skip header row
+  const STATUS_COL = 17; // Column Q = Status
+  const START_ROW = 2;   // Skip header
 
-  // Unhide all rows first to start fresh
+  // Unhide all rows first
   sheet.showRows(START_ROW, sheet.getMaxRows() - 1);
 
-  // Loop through each row and hide rows with 'Inactive' or 'Transitioning' status
   for (let i = START_ROW - 1; i < data.length; i++) {
-    const status = data[i][STATUS_COL - 1]; // Adjusted for 0-based indexing
+    const status = data[i][STATUS_COL - 1];
     if (status === 'Inactive' || status === 'Transitioning') {
+      console.log(`🔴 Hiding row ${i + 1} for status "${status}"`);
       sheet.hideRows(i + 1);
     }
   }
