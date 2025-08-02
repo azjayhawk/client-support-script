@@ -156,6 +156,65 @@ const mToS = {
 }
 
 /**
+ * PURPOSE:
+ * This function hides rows in the "Master Tracker" sheet for clients marked as
+ * "Inactive" or "Transitioning" in the Status column.
+ * It is used for visual clarity without deleting or removing any data.
+ * 
+ * Assumes:
+ * - Header is in Row 1
+ * - Status is in Column P (Column 16)
+ *
+ * USAGE:
+ * - Automatically runs from the "Client Tools" custom menu.
+ * - Pair with `unhideAllClientRows()` to show all clients again.
+ */
+
+function hideInactiveAndTransitioningRows() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Master Tracker');
+  const data = sheet.getDataRange().getValues();
+
+  const STATUS_COL = 16; // Column P
+  const START_ROW = 2;   // Skip header row
+
+  // Unhide all rows first to start fresh
+  sheet.showRows(START_ROW, sheet.getMaxRows() - 1);
+
+  // Loop through each row and hide rows with 'Inactive' or 'Transitioning' status
+  for (let i = START_ROW - 1; i < data.length; i++) {
+    const status = data[i][STATUS_COL - 1]; // Adjusted for 0-based indexing
+    if (status === 'Inactive' || status === 'Transitioning') {
+      sheet.hideRows(i + 1);
+    }
+  }
+}
+
+/**
+ * PURPOSE:
+ * Utility function to unhide all client rows in the "Master Tracker" sheet.
+ * 
+ * USAGE:
+ * - Manually run from the "Client Tools" menu if you want to view all clients again.
+ */
+
+function unhideAllClientRows() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker');
+  sheet.showRows(2, sheet.getMaxRows() - 1); // Unhide all rows below header
+}
+
+/**
+ * Adds both functions to the "Client Tools" custom menu.
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Client Tools')
+    .addItem('Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
+    .addItem('Unhide All Client Rows', 'unhideAllClientRows')
+    .addToUi();
+}
+
+/**
  * onOpen
  * Adds the Client Tools menu when the spreadsheet is opened.
  */
