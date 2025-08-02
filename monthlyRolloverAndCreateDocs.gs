@@ -465,7 +465,7 @@ function addClientAndSync() {
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('🗂 Client Tools')
-    .addItem('1. Add New Client (All Steps)', 'addNewClientToTracker')
+    .addItem('1. Add Client + Sync to Tracker', 'addClientAndSync') // ✅ New combined tool
     .addItem('- Insert New Client into Directory', 'insertNewClientIntoDirectory')
     .addItem('- Insert All Missing Clients into Master Tracker', 'insertAllMissingClients')
     .addItem('- Sort Master Tracker A–Z', 'sortMasterTrackerAZ')
