@@ -1,0 +1,55 @@
+📋 Client Status Management
+This section explains how to pause, deactivate, or archive clients in the RadiateU system without disrupting formulas, automation, or historical records.
+
+✅ Marking a Client as Inactive
+Step 1: Update the Client Directory
+Go to the Client Directory tab
+Locate the client’s row
+In Column D (Status), change the value to:
+Inactive – to fully pause automation
+Transitioning – if in the process of offboarding
+
+
+✅ Clients marked as Inactive or Transitioning will be excluded from:
+Monthly document generation
+Master Tracker row creation (via automation)
+Time Entry syncing
+Client folder and doc creation
+
+
+
+✅ Step 2: Confirm in Master Tracker
+Once the client’s status is set to Inactive in the Client Directory, they will no longer appear in the Master Tracker. This is expected behavior.
+What happens:
+🛑 Their row is automatically excluded from the Master Tracker during sync.
+
+
+✂️ This means their usage tracking, formulas, and document links are also removed from the current month’s sheet.
+
+
+✅ Past archive tabs (e.g., “Master Tracker – July 2025”) will still retain their data.
+
+
+✅ Their information remains in the Client Directory for future reactivation.
+
+
+💡 Tip: If the client is only paused temporarily, consider setting their status to Transitioning — this still excludes them from automation but serves as a soft pause.=
+
+🔁 Re-Activating a Client
+If a client returns and needs to be included again:
+Go to the Client Directory
+Set Column D (Status) back to "Active"
+Unhide the row in Master Tracker (if previously hidden)
+
+
+Run: 🛠 Client Tools > Insert All Missing Clients into Master Tracker
+✅ This will reinsert the client if they had not previously been added
+🛑 If the client is already in the Master Tracker, no duplicate will be added
+
+
+
+✅ Final Notes
+Never delete old clients from the Master Tracker or Client Directory unless absolutely necessary
+Status controls automation; it’s safe to leave rows in place
+Hidden rows will not interfere with formulas, as long as they remain properly structured
+
