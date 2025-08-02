@@ -228,6 +228,7 @@ function clearDocAndFolderLinks() {
  * onOpen
  *
  * Loads the "Client Tools" custom menu with all utility options.
+ * Updated to reflect correct order and labeling.
  */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
@@ -235,7 +236,8 @@ function onOpen() {
     .addItem('Run Monthly Rollover & Docs', 'monthlyRolloverAndCreateDocs')
     .addItem('Reset Master Tracker Formulas', 'resetFormulasInMasterTracker')
     .addItem('Insert New Client into Directory', 'insertNewClientIntoDirectory')
-    .addItem('Insert All Missing Clients into Master Tracker', 'insertAllMissingClients')
+    .addItem('Append Missing Clients to Master Tracker', 'insertAllMissingClients') // <- new name for clarity
+    .addItem('Sort Master Tracker A–Z', 'sortMasterTrackerAZ')
     .addItem('Clear Doc & Folder Links', 'clearDocAndFolderLinks')
     .addToUi();
 }
