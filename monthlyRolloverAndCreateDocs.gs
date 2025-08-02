@@ -322,6 +322,20 @@ function insertNewClientIntoDirectory() {
   ui.alert('✅ New client added to Client Directory.');
 }
 
+function onEdit(e) {
+  const sheet = e.source.getActiveSheet();
+  if (sheet.getName() !== 'Client Directory') return;
+
+  const editedRow = e.range.getRow();
+  const editedCol = e.range.getColumn();
+
+  // Only run if a cell in Columns A–K (1–11) was edited, and not the header
+  if (editedRow > 1 && editedCol >= 1 && editedCol <= 11) {
+    const timestampCell = sheet.getRange(editedRow, 11); // Column K
+    timestampCell.setValue(new Date());
+  }
+}
+
 /**
  * onOpen
  * Adds the Client Tools menu when the spreadsheet is opened.
