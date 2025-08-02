@@ -156,6 +156,67 @@ const mToS = {
 }
 
 /**
+ * PURPOSE:
+ * Inserts all clients from the Client Directory into the Master Tracker
+ * if they are not already present. Preserves row order and copies formulas
+ * from the template row (Row 2) to ensure consistency.
+ *
+ * Assumptions:
+ * - Client Directory: client name in Column A, plan type in B, monthly hours in C, status in D, email in E, first name in F, last name in G
+ * - Master Tracker: client name in Column B (index 2)
+ * - Template row is Row 2 in Master Tracker (row with correct formulas)
+ */
+
+function insertAllMissingClients() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const directorySheet = ss.getSheetByName('Client Directory');
+  const masterSheet = ss.getSheetByName('Master Tracker');
+
+  const dirData = directorySheet.getDataRange().getValues();
+  const masterData = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues(); // Column B = Client Name
+
+  const masterClientNames = masterData.map(row => row[0].toString().trim().toLowerCase());
+  const newClients = [];
+
+  for (let i = 1; i < dirData.length; i++) {
+    const name = dirData[i][0];
+    if (!name) continue;
+    const lowerName = name.toString().trim().toLowerCase();
+    if (!masterClientNames.includes(lowerName)) {
+      newClients.push(dirData[i]);
+    }
+  }
+
+  if (newClients.length === 0) {
+    console.log('✅ No missing clients to insert.');
+    return;
+  }
+
+  const TEMPLATE_ROW = 2;
+
+  newClients.forEach(client => {
+    const lastRow = masterSheet.getLastRow();
+    masterSheet.insertRowAfter(lastRow);
+
+    // Copy formulas from Row 2
+    const templateRange = masterSheet.getRange(TEMPLATE_ROW, 1, 1, masterSheet.getLastColumn());
+    const newRowRange = masterSheet.getRange(lastRow + 1, 1, 1, masterSheet.getLastColumn());
+    templateRange.copyTo(newRowRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+
+    // Fill in values from Client Directory
+    masterSheet.getRange(lastRow + 1, 2).setValue(client[0]); // Client Name
+    masterSheet.getRange(lastRow + 1, 3).setValue(client[1]); // Plan Type
+    masterSheet.getRange(lastRow + 1, 4).setValue(client[2]); // Monthly Hours
+    masterSheet.getRange(lastRow + 1, 15).setValue(client[3]); // Status (column O)
+    masterSheet.getRange(lastRow + 1, 11).setValue(client[4]); // Email (column K)
+    masterSheet.getRange(lastRow + 1, 13).setValue(client[5]); // First Name (M)
+    masterSheet.getRange(lastRow + 1, 14).setValue(client[6]); // Last Name (N)
+  });
+
+  console.log(`✅ Inserted ${newClients.length} new client(s) into Master Tracker.`);
+}
+
+/**
  * 
  * PURPOSE:
  * This function hides rows in the "Master Tracker" sheet for clients marked as
