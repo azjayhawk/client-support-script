@@ -322,6 +322,28 @@ function insertNewClientIntoDirectory() {
   ui.alert('✅ New client added to Client Directory.');
 }
 
+/**
+ * Sorts the Master Tracker sheet A–Z by Client Name (Column B).
+ * Header in Row 1 is preserved.
+ */
+function sortMasterTrackerAZ() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker');
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return;
+
+  // Unhide all client rows before sorting
+  sheet.showRows(2, sheet.getMaxRows() - 1);
+
+  // Sort by Column B (Client Name), ascending
+  const range = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
+  range.sort({ column: 2, ascending: true });
+
+  // Re-hide Inactive and Transitioning rows
+  hideInactiveAndTransitioningRows();
+
+  console.log('✅ Master Tracker sorted A–Z by Client Name (including hidden rows).');
+}
+
 function onEdit(e) {
   const sheet = e.source.getActiveSheet();
   if (sheet.getName() !== 'Client Directory') return;
