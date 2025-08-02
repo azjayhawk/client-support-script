@@ -1,98 +1,101 @@
 
+
 ✅ Checklist: Add a New Client to the System
 
-This checklist guides you through adding a new client into the RadiateU support tracking system using built-in automation tools. Follow all steps in order to avoid data misalignment or formula breaks.
+This checklist guides you through adding a new client into the RadiateU support tracking system using built-in automation. Follow all steps in sequence to ensure accurate setup and avoid misaligned data.
 
 ⸻
 
-🔹 Step 1: Add to Client Directory
-	1.	Go to the Client Directory tab.
-	2.	Use the menu:
+🔹 Step 1: Add to the Client Directory
+	1.	Open the Client Directory tab
+	2.	Go to the menu:
 🗂 Client Tools > Insert New Client into Directory
-→ This will prompt you to enter the client’s domain and status.
-	3.	After the row is added at the bottom, fill in the following fields on that row only:
+→ This prompts for domain and status (must be “Active” to appear in Master Tracker)
+	3.	Once the row is added at the bottom, fill in these fields on that new row only:
 
 Column	What to Enter
 A	Client Name (e.g., rightstuffmedia.com)
 B	Plan Type (e.g., Starter, Pro)
 C	Client Email
-D	Status → Must be set to "Active" for automation
-E–J	Optional metadata (leave blank unless needed)
-K	Leave blank — this will be auto-filled later by the script
+D	Status → Must be “Active”
+E–J	Optional metadata (can leave blank)
+K	Leave blank — will be auto-filled
 
-
-
-⚠️ Important: Do not manually sort the Client Directory or insert rows in the middle.
-New rows should only be added at the bottom.
+⚠️ Important: Do not manually insert or sort rows in the middle. Always add at the bottom.
 
 ⸻
 
 🔹 Step 2: Add to the Master Tracker
-	1.	Go to the Master Tracker tab.
-	2.	Run:
+	1.	Go to the Master Tracker tab
+	2.	From the menu, run:
 🗂 Client Tools > Insert All Missing Clients into Master Tracker
-✅ This will:
-	•	Append any new Active clients from the Client Directory
-	•	Insert them at the bottom of the Master Tracker
-	•	Preserve formulas and avoid row shifts or misalignment
 
-⚠️ Do NOT manually insert new rows into the Master Tracker.
-This may displace existing client data and break row associations.
+✅ This safely:
+	•	Detects and appends new Active clients
+	•	Preserves all formula rows and spacing
+	•	Avoids data shifting or breakage
+
+⚠️ Never insert rows into the Master Tracker manually.
 
 ⸻
 
 🔹 Step 3: Sort and Verify
-	1.	Run:🗂 Client Tools > Sort Master Tracker A–Z
-→ This keeps your list tidy without affecting data alignment.
-	2.	Confirm the new client’s row is correct:
+	1.	From the menu, run:
+🗂 Client Tools > Sort Master Tracker A–Z
+	2.	Confirm the new row is working:
 
 Column	What to Check
 B	Client Name is correct
-C	Plan Type is populated
-D	Monthly Hours pulled from Plan
-F	Hours Used is empty or 0
-G–J	Formulas are working (no #REF!)
-M	Email is populated
-O–Q	First/Last Name and Status are filled in
+C	Plan Type pulled in via formula
+D	Monthly Plan Hours populated
+F	Hours Used = 0
+G–I	Formulas working — no #REF!
+M	Email address filled in
+O–Q	First Name, Last Name, Status
 
-
+🛑 Column J (“Block Deficit Warning”) is deprecated. It may be hidden but is no longer used.
 
 ⸻
 
 🔹 Step 4: (Optional) Add Initial Block Hours
 
-If this client is starting with an existing block of support time:
+If the client is beginning with a support block:
 	•	Go to their row in Master Tracker
-	•	Manually enter a starting value in:
-	•	Column E: Block Hours Available
+	•	Enter the value in:
 
-This will feed into calculations for overage, balance, and summary reporting.
+Column	Field
+E	Block Hours Available
 
-⸻
-
-🔹 Step 5: (Optional) Create Folder and Monthly Doc
-
-To generate the folder and support summary doc:
-	1.	Open Apps Script → Set:
-const DRY_RUN = true; (for testing)
-	2.	Then run:🗂 Client Tools > Run Monthly Rollover & Docs
-
-This will:
-	•	Create the client’s Drive folder
-	•	Create a Google Doc support summary
-	•	Log the doc link into Column N of Master Tracker
-	•	Fill in the folder URL in Column K of Client Directory
-
-✅ When you’re ready to finalize, set DRY_RUN = false and re-run the script to generate final documents.
+This will calculate block usage and balance correctly in formulas.
 
 ⸻
 
-🔍 Final Checklist
+🔹 Step 5: (Optional) Create Folder and Support Doc
 
-✅ Item	Confirmation
-Client is listed in both Client Directory and Master Tracker	
-Master Tracker row is properly filled with formulas and email	
-Block Hours (if any) are manually set in Column E	
-Doc link appears in Column N (after script)	
-Folder URL appears in Column K (after script)	
-No other client rows were overwritten or displaced	
+To generate a new folder + summary document:
+	1.	In the Apps Script Editor, set:
+const DRY_RUN = true; (for test mode)
+	2.	Then run:
+🗂 Client Tools > Run Monthly Rollover & Docs
+
+✅ The script will:
+	•	Create the Google Drive folder (if not already present)
+	•	Generate a monthly support summary Google Doc
+	•	Insert the Doc link in Column N of Master Tracker
+	•	Insert the Folder URL in Column K of Client Directory
+
+✅ When ready to finalize, set DRY_RUN = false and run again to overwrite with final versions.
+
+⸻
+
+✅ Final Sanity Check
+
+✅ Item	Confirmed?
+Client added at bottom of Client Directory	
+Client marked Active in Column D	
+Appears in Master Tracker	
+Master Tracker row formulas are intact	
+Block Hours manually added (if applicable)	
+Folder URL populated (Column K)	
+Doc link populated (Column N)	
+No other rows shifted or broken	
