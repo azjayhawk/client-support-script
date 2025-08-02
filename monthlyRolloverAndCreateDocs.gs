@@ -137,31 +137,39 @@ function resetFormulasInMasterTracker() {
 /**
  * insertAllMissingClients
  *
- * Appends any missing clients to the bottom of the Master Tracker.
- * Preserves formula integrity by NOT inserting alphabetically.
+ * Scans the Client Directory for clients marked "Active" and ensures they exist in the Master Tracker.
+ * This function does NOT insert clients with status Inactive or Transitioning.
+ * 
+ * ⚠️ Inactive clients are ignored by design and must be reactivated before they can be re-added.
+ * ✅ Keeps historical data intact for previously added clients, even if their status changes later.
  */
 function insertAllMissingClients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const helperSheet = ss.getSheetByName("Active Clients Sorted");
+  const directorySheet = ss.getSheetByName("Client Directory");
   const masterSheet = ss.getSheetByName("Master Tracker");
 
-  const helperClients = helperSheet.getRange(2, 1, helperSheet.getLastRow() - 1).getValues().flat();
-  const existingClients = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues().flat();
+  const dirData = directorySheet.getDataRange().getValues();
+  const masterClients = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues().flat();
+  const monthLabel = masterSheet.getRange(2, 1).getValue();
 
-  const missingClients = helperClients.filter(name => name && !existingClients.includes(name));
+  const activeClients = dirData.slice(1).filter(row => {
+    const name = row[0];
+    const status = row[3]; // Column D is Status
+    return name && status === "Active";
+  }).map(row => row[0]);
+
+  const missingClients = activeClients.filter(name => !masterClients.includes(name));
 
   if (missingClients.length === 0) {
     SpreadsheetApp.getUi().alert("✅ All active clients are already in the Master Tracker.");
     return;
   }
 
-  const monthLabel = masterSheet.getRange(2, 1).getValue(); // Use the current month from row 2
-
   missingClients.forEach(name => {
     masterSheet.appendRow([monthLabel, name]);
   });
 
-  SpreadsheetApp.getUi().alert(`✅ ${missingClients.length} missing client(s) added to the bottom of the Master Tracker.`);
+  SpreadsheetApp.getUi().alert(`✅ ${missingClients.length} missing client(s) added to the Master Tracker.`);
 }
 
 /**
