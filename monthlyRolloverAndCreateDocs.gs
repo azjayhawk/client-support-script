@@ -359,20 +359,19 @@ function onEdit(e) {
 }
 
 /**
- * PURPOSE:
- * Combines three operations:
- * 1. Insert a new client into the Client Directory
- * 2. Sync them to the Master Tracker if missing
- * 3. Sort Master Tracker A–Z
+ * Combines:
+ * - Insert New Client into Client Directory
+ * - Insert All Missing Clients into Master Tracker
+ * - Sort Master Tracker A–Z
  */
-
-function addNewClientToTracker() {
+function addClientAndSync() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
+
   const directorySheet = ss.getSheetByName('Client Directory');
   const masterSheet = ss.getSheetByName('Master Tracker');
 
-  // === Step 1: Prompt for Client Info ===
+  // === Prompt for new client details ===
   const namePrompt = ui.prompt('New Client', 'Enter the client domain or name:', ui.ButtonSet.OK_CANCEL);
   if (namePrompt.getSelectedButton() !== ui.Button.OK) return;
 
@@ -385,61 +384,72 @@ function addNewClientToTracker() {
   const partnerPrompt = ui.prompt('Client Partner', 'Enter Client Partner (if applicable):', ui.ButtonSet.OK_CANCEL);
   if (partnerPrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  // === Step 2: Insert into Client Directory ===
+  const clientName = namePrompt.getResponseText().trim();
+  const planType = planPrompt.getResponseText().trim();
+  const email = emailPrompt.getResponseText().trim();
+  const partner = partnerPrompt.getResponseText().trim();
+
+  // === Insert into Client Directory ===
   const lastRow = directorySheet.getLastRow();
   const newRowIndex = lastRow + 1;
   directorySheet.insertRowsAfter(lastRow, 1);
 
+  // Copy formatting & validation from Row 2
   const templateRange = directorySheet.getRange(2, 1, 1, directorySheet.getLastColumn());
   const newRowRange = directorySheet.getRange(newRowIndex, 1, 1, directorySheet.getLastColumn());
   templateRange.copyTo(newRowRange, { formatOnly: true });
 
-  const newRowValues = [];
-  newRowValues[0] = namePrompt.getResponseText().trim();    // A: Client Name
-  newRowValues[1] = planPrompt.getResponseText().trim();    // B: Plan Type
-  newRowValues[2] = emailPrompt.getResponseText().trim();   // C: Email
-  newRowValues[3] = 'Active';                               // D: Status
-  newRowValues[4] = partnerPrompt.getResponseText().trim(); // E: Client Partner
+  // Set values
+  const newRowValues = [
+    clientName,    // A
+    planType,      // B
+    email,         // C
+    'Active',      // D
+    partner        // E
+  ];
   directorySheet.getRange(newRowIndex, 1, 1, newRowValues.length).setValues([newRowValues]);
 
-  console.log(`✅ Client added to Client Directory: ${newRowValues[0]}`);
+  // Timestamp
+  directorySheet.getRange(newRowIndex, 11).setValue(new Date());
 
-  // === Step 3: Insert into Master Tracker if missing ===
+  // === Insert into Master Tracker if missing ===
   const dirData = directorySheet.getDataRange().getValues();
-  const masterData = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues(); // Column B
+  const masterData = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues(); // Column B = Client Name
 
-  const masterClientNames = masterData.map(row => row[0].toString().trim().toLowerCase());
-  const clientToInsert = dirData.find(row => row[0].toString().trim().toLowerCase() === newRowValues[0].toLowerCase());
+  const masterNames = masterData.map(row => row[0].toString().trim().toLowerCase());
+  const lowerClientName = clientName.toLowerCase();
 
-  if (!masterClientNames.includes(newRowValues[0].toLowerCase())) {
-    const TEMPLATE_ROW = 2;
-    const insertRow = masterSheet.getLastRow() + 1;
+  if (!masterNames.includes(lowerClientName)) {
+    const clientRow = dirData.find(row => row[0].toString().trim().toLowerCase() === lowerClientName);
+    if (!clientRow) {
+      ui.alert(`⚠️ Could not find ${clientName} in Client Directory.`);
+      return;
+    }
+
+    const insertRow = masterSheet.getLastRow();
     masterSheet.insertRowAfter(insertRow);
 
+    // Copy formulas from template row (Row 2)
+    const TEMPLATE_ROW = 2;
     const templateRange = masterSheet.getRange(TEMPLATE_ROW, 1, 1, masterSheet.getLastColumn());
     const newRowRange = masterSheet.getRange(insertRow + 1, 1, 1, masterSheet.getLastColumn());
     templateRange.copyTo(newRowRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
 
-    masterSheet.getRange(insertRow + 1, 2).setValue(clientToInsert[0]);  // Client Name
-    masterSheet.getRange(insertRow + 1, 3).setValue(clientToInsert[1]);  // Plan Type
-    masterSheet.getRange(insertRow + 1, 4).setFormula(`=IFERROR(ARRAYFORMULA(...))`); // Inherit via formula
-    masterSheet.getRange(insertRow + 1, 11).setValue(clientToInsert[2]); // Email
-    masterSheet.getRange(insertRow + 1, 15).setValue(clientToInsert[3]); // Status
-    masterSheet.getRange(insertRow + 1, 13).setValue(clientToInsert[5]); // First Name
-    masterSheet.getRange(insertRow + 1, 14).setValue(clientToInsert[6]); // Last Name
-
-    console.log(`✅ Client added to Master Tracker: ${clientToInsert[0]}`);
+    // Populate static values only
+    masterSheet.getRange(insertRow + 1, 2).setValue(clientRow[0]);  // Client Name
+    masterSheet.getRange(insertRow + 1, 3).setValue(clientRow[1]);  // Plan Type
+    masterSheet.getRange(insertRow + 1, 11).setValue(clientRow[2]); // Email
+    masterSheet.getRange(insertRow + 1, 15).setValue(clientRow[3]); // Status
+    masterSheet.getRange(insertRow + 1, 13).setValue(clientRow[5]); // First Name
+    masterSheet.getRange(insertRow + 1, 14).setValue(clientRow[6]); // Last Name
   }
 
-  // === Step 4: Sort Master Tracker A–Z ===
-  const lastMasterRow = masterSheet.getLastRow();
-  if (lastMasterRow > 2) {
-    masterSheet.getRange(2, 1, lastMasterRow - 1, masterSheet.getLastColumn())
-      .sort({ column: 2, ascending: true });
-    console.log('✅ Master Tracker sorted by client name.');
-  }
+ // === Sort Master Tracker A–Z ===
+const trackerLastRow = masterSheet.getLastRow();
+const range = masterSheet.getRange(2, 1, trackerLastRow - 1, masterSheet.getLastColumn());
+range.sort({ column: 2, ascending: true });
 
-  ui.alert(`✅ New client "${newRowValues[0]}" fully added and synced.`);
+  ui.alert(`✅ ${clientName} added to Client Directory and synced with Master Tracker.`);
 }
 
 /**
