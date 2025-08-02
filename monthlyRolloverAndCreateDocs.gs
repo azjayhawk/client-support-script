@@ -230,21 +230,15 @@ function clearDocAndFolderLinks() {
   SpreadsheetApp.getUi().alert("🧹 Cleared support summary and folder links from columns N and T.");
 }
 
-/**
- * onOpen
- *
- * Loads the "Client Tools" custom menu with all utility options.
- * Updated to reflect correct order and labeling.
- */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('🗂 Client Tools')
     .addItem('Run Monthly Rollover & Docs', 'monthlyRolloverAndCreateDocs')
     .addItem('Reset Master Tracker Formulas', 'resetFormulasInMasterTracker')
     .addItem('Insert New Client into Directory', 'insertNewClientIntoDirectory')
-    .addItem('Append Missing Clients to Master Tracker', 'insertAllMissingClients') // <- new name for clarity
-    .addItem('Sort Master Tracker A–Z', 'sortMasterTrackerAZ')
+    .addItem('Insert All Missing Clients into Master Tracker', 'insertAllMissingClients')
     .addItem('Clear Doc & Folder Links', 'clearDocAndFolderLinks')
+    .addItem('Sort Master Tracker A–Z', 'sortMasterTrackerAZ')  // ✅ THIS LINE
     .addToUi();
 }
 
@@ -288,4 +282,20 @@ function onEdit(e) {
   const timeZone = e.source.getSpreadsheetTimeZone();
   const now = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
   sheet.getRange(editedRow, 12).setValue(now); // Column L
+}
+
+/**
+ * sortMasterTrackerAZ
+ *
+ * Sorts the Master Tracker alphabetically by Client Name (Column B)
+ */
+function sortMasterTrackerAZ() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Master Tracker");
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  const rangeToSort = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
+  rangeToSort.sort({ column: 2, ascending: true });
+
+  SpreadsheetApp.getUi().alert("✅ Master Tracker sorted A–Z by client name.");
 }
