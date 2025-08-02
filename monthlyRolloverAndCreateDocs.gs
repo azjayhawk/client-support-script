@@ -277,27 +277,18 @@ function unhideAllClientRows() {
 
 /**
  * PURPOSE:
- * Inserts a new client into the "Client Directory" sheet with default values.
- * Ensures new entries follow the correct column order:
- * A = Client Name
- * B = Plan Type
- * C = Email
- * D = Status
- * E = Client Partner
- * 
- * USAGE:
- * - Run manually from the "Client Tools" menu.
- * - Prompts the user to enter client details.
+ * Inserts a new client into the "Client Directory" sheet with default values
+ * and copies formatting & data validation from the template row (Row 2).
  */
 function insertNewClientIntoDirectory() {
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Client Directory');
 
-  // Prompt user for client info
-  const clientNamePrompt = ui.prompt('New Client', 'Enter the client domain or name (e.g., example.com):', ui.ButtonSet.OK_CANCEL);
+  // Prompt user for input
+  const clientNamePrompt = ui.prompt('New Client', 'Enter the client domain or name:', ui.ButtonSet.OK_CANCEL);
   if (clientNamePrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  const planPrompt = ui.prompt('Plan Type', 'Enter plan type (e.g., Starter-0, Pro, RadiateU-5):', ui.ButtonSet.OK_CANCEL);
+  const planPrompt = ui.prompt('Plan Type', 'Enter plan type:', ui.ButtonSet.OK_CANCEL);
   if (planPrompt.getSelectedButton() !== ui.Button.OK) return;
 
   const emailPrompt = ui.prompt('Email', 'Enter client email address:', ui.ButtonSet.OK_CANCEL);
@@ -306,15 +297,28 @@ function insertNewClientIntoDirectory() {
   const partnerPrompt = ui.prompt('Client Partner', 'Enter Client Partner (if applicable):', ui.ButtonSet.OK_CANCEL);
   if (partnerPrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  // Construct new row
-  const newRow = [];
-  newRow[0] = clientNamePrompt.getResponseText().trim(); // Column A
-  newRow[1] = planPrompt.getResponseText().trim();       // Column B
-  newRow[2] = emailPrompt.getResponseText().trim();      // Column C (corrected!)
-  newRow[3] = 'Active';                                   // Column D (default status)
-  newRow[4] = partnerPrompt.getResponseText().trim();    // Column E
+  // Determine insertion point
+  const lastRow = sheet.getLastRow();
+  const newRowIndex = lastRow + 1;
 
-  sheet.appendRow(newRow);
+  // Insert blank row at bottom
+  sheet.insertRowsAfter(lastRow, 1);
+
+  // Copy formatting + data validation from Row 2
+  const templateRange = sheet.getRange(2, 1, 1, sheet.getLastColumn());
+  const newRowRange = sheet.getRange(newRowIndex, 1, 1, sheet.getLastColumn());
+  templateRange.copyTo(newRowRange, { formatOnly: true });
+
+  // Fill in data values
+  const newRowValues = [];
+  newRowValues[0] = clientNamePrompt.getResponseText().trim();  // A: Client Name
+  newRowValues[1] = planPrompt.getResponseText().trim();        // B: Plan Type
+  newRowValues[2] = emailPrompt.getResponseText().trim();       // C: Email
+  newRowValues[3] = 'Active';                                   // D: Status (default)
+  newRowValues[4] = partnerPrompt.getResponseText().trim();     // E: Client Partner
+
+  sheet.getRange(newRowIndex, 1, 1, newRowValues.length).setValues([newRowValues]);
+
   ui.alert('✅ New client added to Client Directory.');
 }
 
