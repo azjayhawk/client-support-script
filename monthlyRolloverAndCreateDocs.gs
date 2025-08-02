@@ -204,23 +204,14 @@ function unhideAllClientRows() {
 }
 
 /**
- * Adds both functions to the "Client Tools" custom menu.
- */
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('Client Tools')
-    .addItem('Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
-    .addItem('Unhide All Client Rows', 'unhideAllClientRows')
-    .addToUi();
-}
-
-/**
  * onOpen
  * Adds the Client Tools menu when the spreadsheet is opened.
  */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('🗂 Client Tools')
+    .addItem('Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
+    .addItem('Unhide All Client Rows', 'unhideAllClientRows')
     .addItem('Run Monthly Rollover & Docs', 'monthlyRolloverAndCreateDocs')
     .addItem('Fix Master Tracker Lookup Formulas (F, H, I, M–S)', 'updateMasterTrackerFormulas')
     .addItem('Insert New Client into Directory', 'insertNewClientIntoDirectory')
