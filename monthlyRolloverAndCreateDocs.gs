@@ -122,16 +122,16 @@ function resetFormulasInMasterTracker() {
     sheet.getRange(i, 7).setFormula(`=IF(F${i}=0, 0, MAX(F${i} - D${i}, 0))`);
 
     // H - Block Hours Used (robust fix including negative block balances)
-sheet.getRange(i, 8).setFormula(`=IF(F${i}=0, 0, IF(F${i}<=D${i}, 0, IF(E${i}<=0, F${i}-D${i}, MIN(F${i}-D${i}, E${i}))))`);
+    sheet.getRange(i, 8).setFormula(`=IF(F${i}=0, 0, IF(F${i}<=D${i}, 0, IF(E${i}<=0, F${i}-D${i}, MIN(F${i}-D${i}, E${i}))))`);
 
-    // I - Block Remaining
+    // I - Block Hours Remaining
     sheet.getRange(i, 9).setFormula(`=IF(H${i}="", "", E${i}-H${i})`);
 
-    // J - Block Deficit Warning (hrs)
+    // J - Block Deficit Warning (hrs) — formula removed as column is deprecated
     // sheet.getRange(i, 10).setFormula(`=IF(AND(D${i}=0, E${i}<0), ABS(E${i}), 0)`);
   }
 
-  SpreadsheetApp.getUi().alert("✅ Formulas in columns G–I have been updated.");
+  SpreadsheetApp.getUi().alert("✅ Formulas in columns G–I reset. Column J has been deprecated.");
 }
 
 /**
