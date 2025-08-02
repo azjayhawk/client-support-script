@@ -137,9 +137,8 @@ sheet.getRange(i, 8).setFormula(`=IF(F${i}=0, 0, IF(F${i}<=D${i}, 0, IF(E${i}<=0
 /**
  * insertAllMissingClients
  *
- * Appends missing clients from the helper sheet to the bottom of the Master Tracker.
- * This avoids breaking formula alignment by inserting in the middle.
- * Users should run Sort Master Tracker afterward for alphabetical order.
+ * Appends any missing clients to the bottom of the Master Tracker.
+ * Preserves formula integrity by NOT inserting alphabetically.
  */
 function insertAllMissingClients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -156,14 +155,13 @@ function insertAllMissingClients() {
     return;
   }
 
-  // Use the current month's value from cell A2
-  const currentMonth = masterSheet.getRange(2, 1).getValue();
+  const monthLabel = masterSheet.getRange(2, 1).getValue(); // Use the current month from row 2
 
-  missingClients.forEach(clientName => {
-    masterSheet.appendRow([currentMonth, clientName]);
+  missingClients.forEach(name => {
+    masterSheet.appendRow([monthLabel, name]);
   });
 
-  SpreadsheetApp.getUi().alert(`✅ ${missingClients.length} missing client(s) were added at the bottom. Please run 'Sort Master Tracker' to organize them.`);
+  SpreadsheetApp.getUi().alert(`✅ ${missingClients.length} missing client(s) added to the bottom of the Master Tracker.`);
 }
 
 /**
