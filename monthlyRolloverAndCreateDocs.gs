@@ -277,47 +277,61 @@ function unhideAllClientRows() {
 
 /**
  * PURPOSE:
- * Inserts a new client into the "Client Directory" sheet.
- * Prompts the user for a client name, adds it to the next available row,
- * and sets default values like status ("Active") and a timestamp.
+ * Adds a new client to the Client Directory and Master Tracker (if missing),
+ * copying formulas from the Master Tracker template row (Row 2).
  *
- * ASSUMPTIONS:
- * - Column A: Client Name
- * - Column D: Status ("Active", "Inactive", etc.)
- * - Column L: Timestamp
- *
- * USAGE:
- * - Access via the "Client Tools" menu.
- * - Typically the first step in onboarding a new client.
+ * Assumes:
+ * - Client Directory columns: A = Client Name, B = Plan Type, C = Monthly Hours, D = Status
+ * - Master Tracker columns: B = Client Name, C = Plan Type, D = Monthly Hours, O = Status, K = Email, M/N = First/Last
  */
+
 function insertNewClientIntoDirectory() {
   const ui = SpreadsheetApp.getUi();
-  const sheet = SpreadsheetApp.getActive().getSheetByName("Client Directory");
-  const lastRow = sheet.getLastRow();
+  const response = ui.prompt('Add New Client', 'Enter client info as: clientName, planType, monthlyHours, status, email, firstName, lastName', ui.ButtonSet.OK_CANCEL);
 
-  // Prompt for client name
-  const response = ui.prompt('Add New Client', 'Enter the client name (e.g., example.org):', ui.ButtonSet.OK_CANCEL);
   if (response.getSelectedButton() !== ui.Button.OK) return;
 
-  const clientName = response.getResponseText().trim();
-  if (!clientName) {
-    ui.alert("Client name cannot be blank.");
+  const input = response.getResponseText().split(',').map(val => val.trim());
+  if (input.length < 7) {
+    ui.alert('❌ Please enter all 7 values.');
     return;
   }
 
-  // Check for duplicates
-  const existingClients = sheet.getRange("A2:A" + lastRow).getValues().flat();
-  if (existingClients.includes(clientName)) {
-    ui.alert(`"${clientName}" already exists in the Client Directory.`);
-    return;
+  const [clientName, planType, monthlyHours, status, email, firstName, lastName] = input;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const dirSheet = ss.getSheetByName('Client Directory');
+  const masterSheet = ss.getSheetByName('Master Tracker');
+
+  // Insert into Client Directory
+  dirSheet.appendRow([clientName, planType, monthlyHours, status, email, firstName, lastName]);
+  console.log(`✅ Added ${clientName} to Client Directory.`);
+
+  // Check if client is already in Master Tracker
+  const masterData = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues(); // Column B = Client Name
+  const isInMaster = masterData.some(row => row[0]?.toString().toLowerCase() === clientName.toLowerCase());
+
+  if (!isInMaster) {
+    const TEMPLATE_ROW = 2;
+    const lastRow = masterSheet.getLastRow();
+    masterSheet.insertRowAfter(lastRow);
+
+    const templateRange = masterSheet.getRange(TEMPLATE_ROW, 1, 1, masterSheet.getLastColumn());
+    const newRowRange = masterSheet.getRange(lastRow + 1, 1, 1, masterSheet.getLastColumn());
+    templateRange.copyTo(newRowRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+
+    // Fill in values
+    masterSheet.getRange(lastRow + 1, 2).setValue(clientName);
+    masterSheet.getRange(lastRow + 1, 3).setValue(planType);
+    masterSheet.getRange(lastRow + 1, 4).setValue(monthlyHours);
+    masterSheet.getRange(lastRow + 1, 15).setValue(status);       // Column O
+    masterSheet.getRange(lastRow + 1, 11).setValue(email);        // Column K
+    masterSheet.getRange(lastRow + 1, 13).setValue(firstName);    // Column M
+    masterSheet.getRange(lastRow + 1, 14).setValue(lastName);     // Column N
+
+    console.log(`✅ Also added ${clientName} to Master Tracker.`);
+  } else {
+    console.log(`ℹ️ ${clientName} is already in the Master Tracker.`);
   }
-
-  // Find first empty row
-  const targetRow = lastRow + 1;
-
-  sheet.getRange(targetRow, 1).setValue(clientName);         // Column A: Client Name
-  sheet.getRange(targetRow, 4).setValue("Active");           // Column D: Status
-  sheet.getRange(targetRow, 12).setValue(new Date());        // Column L: Timestamp
 }
 
 /**
