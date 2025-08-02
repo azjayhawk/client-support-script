@@ -1,55 +1,42 @@
 📋 Client Status Management
-This section explains how to pause, deactivate, or archive clients in the RadiateU system without disrupting formulas, automation, or historical records.
+This section explains how to deactivate, hide, or reactivate clients without disrupting your system.
 
 ✅ Marking a Client as Inactive
-Step 1: Update the Client Directory
+Step 1: Update Client Directory
 Go to the Client Directory tab
-Locate the client’s row
-In Column D (Status), change the value to:
-Inactive – to fully pause automation
-Transitioning – if in the process of offboarding
-
-
-✅ Clients marked as Inactive or Transitioning will be excluded from:
+Find the client’s row
+Change Column D (Status) to:
+"Inactive" or "Transitioning"
+This ensures they are skipped by:
 Monthly document generation
-Master Tracker row creation (via automation)
-Time Entry syncing
-Client folder and doc creation
+Folder creation
+Doc link updates
+
+Step 2: Master Tracker
+If the client has already been added:
+Their row remains in Master Tracker
+They will be ignored during future script runs
+They will not be removed from Master Tracker automatically.
+
+Step 3: (Optional) Hide in Master Tracker
+To tidy your view:
+Right-click their row in Master Tracker
+Choose Hide row
+Optionally, leave a note in Column L:
+
+ “Inactive as of Aug 2025”
 
 
 
-✅ Step 2: Confirm in Master Tracker
-Once the client’s status is set to Inactive in the Client Directory, they will no longer appear in the Master Tracker. This is expected behavior.
-What happens:
-🛑 Their row is automatically excluded from the Master Tracker during sync.
+🔁 Reactivating a Client
+To bring back a paused or inactive client:
+Client Directory
+Change Column D back to "Active"
 
 
-✂️ This means their usage tracking, formulas, and document links are also removed from the current month’s sheet.
-
-
-✅ Past archive tabs (e.g., “Master Tracker – July 2025”) will still retain their data.
-
-
-✅ Their information remains in the Client Directory for future reactivation.
-
-
-💡 Tip: If the client is only paused temporarily, consider setting their status to Transitioning — this still excludes them from automation but serves as a soft pause.=
-
-🔁 Re-Activating a Client
-If a client returns and needs to be included again:
-Go to the Client Directory
-Set Column D (Status) back to "Active"
-Unhide the row in Master Tracker (if previously hidden)
-
-
-Run: 🛠 Client Tools > Insert All Missing Clients into Master Tracker
-✅ This will reinsert the client if they had not previously been added
-🛑 If the client is already in the Master Tracker, no duplicate will be added
-
-
-
-✅ Final Notes
-Never delete old clients from the Master Tracker or Client Directory unless absolutely necessary
-Status controls automation; it’s safe to leave rows in place
-Hidden rows will not interfere with formulas, as long as they remain properly structured
+Master Tracker
+If their row already exists: just unhide
+If they were not yet added:
+Run 🗂 Insert All Missing Clients into Master Tracker
+They will now appear in all future rollovers and doc generation.
 

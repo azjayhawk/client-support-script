@@ -4,57 +4,52 @@
  *
  * Runs the end-of-month rollover process:
  * - Identifies the prior month
- * - Iterates over each Active client in "Master Tracker"
+ * - Iterates over each client in "Master Tracker"
  * - Creates and logs a support summary Google Doc
  */
 function monthlyRolloverAndCreateDocs() {
   const DRY_RUN = false;
 
   // === Spreadsheet and UI references ===
-  const ss = SpreadsheetApp.getActiveSpreadsheet();  // Reference to spreadsheet
-  const ui = SpreadsheetApp.getUi();  // UI for alerts
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
 
-  // === Primary data sheets ===
+  // === Sheet references ===
   const masterSheet = ss.getSheetByName("Master Tracker");
   const directorySheet = ss.getSheetByName("Client Directory");
 
-  // === Timezone and parent Drive folder for client subfolders ===
+  // === Drive folder & time metadata ===
   const timeZone = ss.getSpreadsheetTimeZone();
   const parentFolderId = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-';
   const parentFolder = DriveApp.getFolderById(parentFolderId);
-
-  // === Date labeling and logging ===
   const today = new Date();
   today.setMonth(today.getMonth() - 1);
   const monthLabel = Utilities.formatDate(today, timeZone, "MMMM yyyy");
   const timestamp = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
 
-  // === Summary sheet prep ===
+  // === Prepare summary sheet ===
   const summarySheet = ss.getSheetByName("Document Summary") || ss.insertSheet("Document Summary");
   summarySheet.clear();
   summarySheet.appendRow(["Client Name", "Email", "Doc URL", "Timestamp"]);
 
-  const dataRange = masterSheet.getDataRange();
-  const data = dataRange.getValues();
-  const rows = data.slice(1);
+  const data = masterSheet.getDataRange().getValues();
+  const rows = data.slice(1); // Skip header
   let createdCount = 0;
 
-  // === Process each client row ===
+  // === Loop through all clients ===
   rows.forEach((row, i) => {
     const rowNum = i + 2;
     const [ , clientName, , , , , , blockUsed, remainingBlock, uncoveredOverage, , , clientEmail, firstName, , status, domainExpire, accessToGA ] = row;
-    const normalizedStatus = typeof status === "string" ? status.trim().toLowerCase() : "";
     const trimmedName = typeof clientName === "string" ? clientName.trim() : "";
 
-    if (!trimmedName || normalizedStatus !== "active") {
-      console.log(`⚠️ Skipping row ${rowNum}: Name="${trimmedName}" | Status="${normalizedStatus}"`);
+    if (!trimmedName) {
+      console.log(`⚠️ Skipping row ${rowNum}: No client name found.`);
       return;
     }
 
     const docName = `${monthLabel} - ${clientName}`;
     const clientFolder = getOrCreateClientFolder(parentFolder, clientName);
 
-    // Delete old doc if already exists
     const existingFiles = clientFolder.getFilesByName(docName);
     while (existingFiles.hasNext()) {
       existingFiles.next().setTrashed(true);
@@ -65,7 +60,7 @@ function monthlyRolloverAndCreateDocs() {
       return;
     }
 
-    // === Create and write to Google Doc ===
+    // === Create summary document ===
     const doc = DocumentApp.create(docName);
     const body = doc.getBody();
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
@@ -97,18 +92,19 @@ function monthlyRolloverAndCreateDocs() {
   ui.alert(`✅ ${createdCount} support summaries were created.`);
 }
 
-
 /**
  * getOrCreateClientFolder
- *
- * Locates or creates a Google Drive folder for a client within the parent folder.
+ * Creates or retrieves a folder for a client under the designated parent folder.
  */
 function getOrCreateClientFolder(parentFolder, clientName) {
   const folders = parentFolder.getFoldersByName(clientName);
   return folders.hasNext() ? folders.next() : parentFolder.createFolder(clientName);
 }
 
-
+/**
+ * resetFormulasInMasterTracker
+ * Reapplies formulas in columns G, H, I.
+ */
 function resetFormulasInMasterTracker() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Master Tracker");
   const lastRow = sheet.getLastRow();
@@ -118,30 +114,17 @@ function resetFormulasInMasterTracker() {
     const client = sheet.getRange(i, 2).getValue();
     if (!client) continue;
 
-    // G - Overage Beyond Monthly Hours (hrs)
     sheet.getRange(i, 7).setFormula(`=IF(F${i}=0, 0, MAX(F${i} - D${i}, 0))`);
-
-    // H - Block Hours Used (robust fix including negative block balances)
     sheet.getRange(i, 8).setFormula(`=IF(F${i}=0, 0, IF(F${i}<=D${i}, 0, IF(E${i}<=0, F${i}-D${i}, MIN(F${i}-D${i}, E${i}))))`);
-
-    // I - Block Hours Remaining
     sheet.getRange(i, 9).setFormula(`=IF(H${i}="", "", E${i}-H${i})`);
-
-    // J - Block Deficit Warning (hrs) — formula removed as column is deprecated
-    // sheet.getRange(i, 10).setFormula(`=IF(AND(D${i}=0, E${i}<0), ABS(E${i}), 0)`);
   }
 
-  SpreadsheetApp.getUi().alert("✅ Formulas in columns G–I reset. Column J has been deprecated.");
+  SpreadsheetApp.getUi().alert("✅ Master Tracker formulas (G–I) have been reset.");
 }
 
 /**
  * insertAllMissingClients
- *
- * Scans the Client Directory for clients marked "Active" and ensures they exist in the Master Tracker.
- * This function does NOT insert clients with status Inactive or Transitioning.
- * 
- * ⚠️ Inactive clients are ignored by design and must be reactivated before they can be re-added.
- * ✅ Keeps historical data intact for previously added clients, even if their status changes later.
+ * Pulls clients from the Client Directory and appends any that don’t already exist in Master Tracker.
  */
 function insertAllMissingClients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -152,16 +135,11 @@ function insertAllMissingClients() {
   const masterClients = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues().flat();
   const monthLabel = masterSheet.getRange(2, 1).getValue();
 
-  const activeClients = dirData.slice(1).filter(row => {
-    const name = row[0];
-    const status = row[3]; // Column D is Status
-    return name && status === "Active";
-  }).map(row => row[0]);
-
-  const missingClients = activeClients.filter(name => !masterClients.includes(name));
+  const allClients = dirData.slice(1).map(row => row[0]).filter(name => !!name);
+  const missingClients = allClients.filter(name => !masterClients.includes(name));
 
   if (missingClients.length === 0) {
-    SpreadsheetApp.getUi().alert("✅ All active clients are already in the Master Tracker.");
+    SpreadsheetApp.getUi().alert("✅ All clients already exist in the Master Tracker.");
     return;
   }
 
@@ -169,20 +147,16 @@ function insertAllMissingClients() {
     masterSheet.appendRow([monthLabel, name]);
   });
 
-  SpreadsheetApp.getUi().alert(`✅ ${missingClients.length} missing client(s) added to the Master Tracker.`);
+  SpreadsheetApp.getUi().alert(`✅ ${missingClients.length} client(s) added to the Master Tracker.`);
 }
 
 /**
  * insertNewClientIntoDirectory
- *
- * Prompts the user for a new client name and status,
- * then adds them to the Client Directory if not already present.
- * Status should be added to Column D.
+ * Prompts the user to add a new client to the Client Directory.
  */
 function insertNewClientIntoDirectory() {
   const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Client Directory");
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Client Directory");
   const lastRow = sheet.getLastRow();
 
   const clientPrompt = ui.prompt("New Client", "Enter the client's domain (e.g., example.com):", ui.ButtonSet.OK_CANCEL);
@@ -209,17 +183,13 @@ function insertNewClientIntoDirectory() {
     return;
   }
 
-  // Column A = Client Name
-  // Column D = Status
   sheet.appendRow([clientName, "", "", status]);
   ui.alert(`✅ ${clientName} added to the Client Directory.`);
 }
 
-
 /**
  * clearDocAndFolderLinks
- *
- * Wipes any previous HYPERLINKs or folder URLs from columns N and T on the Master Tracker.
+ * Clears columns N and T in the Master Tracker.
  */
 function clearDocAndFolderLinks() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Master Tracker");
@@ -227,67 +197,12 @@ function clearDocAndFolderLinks() {
   if (lastRow < 2) return;
   sheet.getRange(2, 14, lastRow - 1).clearContent(); // Column N
   sheet.getRange(2, 20, lastRow - 1).clearContent(); // Column T
-  SpreadsheetApp.getUi().alert("🧹 Cleared support summary and folder links from columns N and T.");
-}
-
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('🗂 Client Tools')
-    .addItem('Run Monthly Rollover & Docs', 'monthlyRolloverAndCreateDocs')
-    .addItem('Reset Master Tracker Formulas', 'resetFormulasInMasterTracker')
-    .addItem('Insert New Client into Directory', 'insertNewClientIntoDirectory')
-    .addItem('Insert All Missing Clients into Master Tracker', 'insertAllMissingClients')
-    .addItem('Clear Doc & Folder Links', 'clearDocAndFolderLinks')
-    .addItem('Sort Master Tracker A–Z', 'sortMasterTrackerAZ')  // ✅ THIS LINE
-    .addToUi();
-}
-
-/**
- * onEdit
- *
- * Automatically adds a timestamp to Column L of Client Directory
- * whenever any cell in columns A–K is edited.
- */
-function onEdit(e) {
-  const sheet = e.source.getSheetByName("Client Directory");
-  if (!sheet || sheet.getName() !== e.range.getSheet().getName()) return;
-
-  const editedColumn = e.range.getColumn();
-  const editedRow = e.range.getRow();
-
-  // Only trigger for rows 2+ and columns A–K (1–11)
-  if (editedRow < 2 || editedColumn > 11) return;
-
-  const timeZone = e.source.getSpreadsheetTimeZone();
-  const now = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
-  sheet.getRange(editedRow, 12).setValue(now); // Column L
-}
-
-/**
- * onEdit
- *
- * Automatically adds a timestamp to Column L of Client Directory
- * whenever any cell in columns A–K is edited.
- */
-function onEdit(e) {
-  const sheet = e.source.getSheetByName("Client Directory");
-  if (!sheet || sheet.getName() !== e.range.getSheet().getName()) return;
-
-  const editedColumn = e.range.getColumn();
-  const editedRow = e.range.getRow();
-
-  // Only trigger for rows 2+ and columns A–K (1–11)
-  if (editedRow < 2 || editedColumn > 11) return;
-
-  const timeZone = e.source.getSpreadsheetTimeZone();
-  const now = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
-  sheet.getRange(editedRow, 12).setValue(now); // Column L
+  SpreadsheetApp.getUi().alert("🧹 Cleared support summary and folder links.");
 }
 
 /**
  * sortMasterTrackerAZ
- *
- * Sorts the Master Tracker alphabetically by Client Name (Column B)
+ * Sorts Master Tracker A–Z by client name.
  */
 function sortMasterTrackerAZ() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Master Tracker");
@@ -298,4 +213,36 @@ function sortMasterTrackerAZ() {
   rangeToSort.sort({ column: 2, ascending: true });
 
   SpreadsheetApp.getUi().alert("✅ Master Tracker sorted A–Z by client name.");
+}
+
+/**
+ * onOpen
+ * Adds the Client Tools menu when the spreadsheet is opened.
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('🗂 Client Tools')
+    .addItem('Run Monthly Rollover & Docs', 'monthlyRolloverAndCreateDocs')
+    .addItem('Reset Master Tracker Formulas', 'resetFormulasInMasterTracker')
+    .addItem('Insert New Client into Directory', 'insertNewClientIntoDirectory')
+    .addItem('Insert All Missing Clients into Master Tracker', 'insertAllMissingClients')
+    .addItem('Clear Doc & Folder Links', 'clearDocAndFolderLinks')
+    .addItem('Sort Master Tracker A–Z', 'sortMasterTrackerAZ')
+    .addToUi();
+}
+
+/**
+ * onEdit
+ * Tracks updates in Client Directory by adding timestamp to Column L
+ */
+function onEdit(e) {
+  const sheet = e.source.getSheetByName("Client Directory");
+  if (!sheet || sheet.getName() !== e.range.getSheet().getName()) return;
+
+  const col = e.range.getColumn();
+  const row = e.range.getRow();
+  if (row < 2 || col > 11) return;
+
+  const now = Utilities.formatDate(new Date(), e.source.getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  sheet.getRange(row, 12).setValue(now); // Column L
 }
