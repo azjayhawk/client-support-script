@@ -394,6 +394,14 @@ function addNewClientToTracker() {
   if (partnerPrompt.getSelectedButton() !== ui.Button.OK) return;
   const partner = partnerPrompt.getResponseText().trim();
 
+  const firstNamePrompt = ui.prompt('First Name', 'Enter the first name of the client:', ui.ButtonSet.OK_CANCEL);
+  if (firstNamePrompt.getSelectedButton() !== ui.Button.OK) return;
+  const firstName = firstNamePrompt.getResponseText().trim();
+
+  const lastNamePrompt = ui.prompt('Last Name', 'Enter the last name of the client:', ui.ButtonSet.OK_CANCEL);
+  if (lastNamePrompt.getSelectedButton() !== ui.Button.OK) return;
+  const lastName = lastNamePrompt.getResponseText().trim();
+
   // === Step 2: Insert into Client Directory ===
   const lastDirRow = directorySheet.getLastRow();
   const newDirRow = lastDirRow + 1;
@@ -431,6 +439,9 @@ function addNewClientToTracker() {
     const templateRow = masterSheet.getRange(2, 1, 1, masterSheet.getLastColumn());
     const newTrackerRow = masterSheet.getRange(insertRow + 1, 1, 1, masterSheet.getLastColumn());
     templateRow.copyTo(newTrackerRow, SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);  // <-- Updated here
+
+  // === Prevent auto-hyperlinking of Client Name ===
+  masterSheet.getRange(insertRow + 1, 2).setNumberFormat('@STRING@');
 
     masterSheet.getRange(insertRow + 1, 2).setValue(clientRow[0]);  // Client Name
     masterSheet.getRange(insertRow + 1, 3).setValue(clientRow[1]);  // Plan Type
