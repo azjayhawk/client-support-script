@@ -465,6 +465,42 @@ function addNewClientToTracker() {
 }
 
 /**
+ * Hides rows in the Master Tracker for clients marked as Inactive or Transitioning.
+ * Assumes:
+ * - "Master Tracker" has status in Column O (15)
+ * - Header is in Row 1
+ */
+function hideInactiveAndTransitioningRows() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker');
+  const START_ROW = 2;
+  const STATUS_COL = 15;
+  const numRows = sheet.getLastRow() - 1;
+
+  const statuses = sheet.getRange(START_ROW, STATUS_COL, numRows).getValues();
+  sheet.showRows(START_ROW, sheet.getMaxRows() - 1); // Unhide all first
+
+  let hiddenCount = 0;
+  for (let i = 0; i < statuses.length; i++) {
+    const status = (statuses[i][0] || '').toString().toLowerCase().trim();
+    if (status === 'inactive' || status === 'transitioning') {
+      sheet.hideRows(START_ROW + i);
+      hiddenCount++;
+    }
+  }
+
+  console.log(`✅ ${hiddenCount} row(s) hidden based on status.`);
+}
+
+/**
+ * Unhides all rows in the Master Tracker (below the header).
+ */
+function unhideAllClientRows() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker');
+  sheet.showRows(2, sheet.getMaxRows() - 1);
+  console.log('✅ All client rows unhidden.');
+}
+
+/**
  * onOpen
  * Adds the Client Tools menu when the spreadsheet is opened.
  */
@@ -478,5 +514,7 @@ function onOpen() {
     .addItem('🗂 Insert New Client into Directory', 'insertNewClientIntoDirectory')
     .addSeparator()
     .addItem('🔁 Reset Calculated Formulas', 'resetCalculatedFormulas')
+    .addItem('🙈 Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
+    .addItem('🫣 Unhide All Client Rows', 'unhideAllClientRows')
     .addToUi();
 }
