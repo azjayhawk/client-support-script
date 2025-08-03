@@ -1,100 +1,48 @@
-✅ Checklist: Add a New Client to the System
-Use this step-by-step checklist to onboard a new client into the RadiateU support tracking system using your automation tools.
+📘 Instructions: Using the Client Support Tracker
 
-🔹 Step 1: Add to Client Directory
-Go to the Client Directory tab
-Use the menu:
+✅ How to Add a New Client
+Open the Tracker
+ Go to the “Client Tools” menu in the sheet toolbar.
+Select → ➕ Add New Client
+Fill the Prompts:
+Client Domain or Name (e.g., example.com)
+Plan Type (e.g., Starter-0, Grow-1)
+Email Address
+Client Partner (if applicable)
+First Name
+Last Name
+Done!
+The client is automatically added to the Client Directory and synced to the Master Tracker.
+Formatting, formulas, and data validation are applied automatically.
+The Master Tracker is auto-sorted A–Z by client name.
 
+🔕 How to Make a Client Inactive
+Go to the Client Directory tab.
+Locate the client you want to deactivate.
+In Column D: Status, change the value to either:
+"Inactive" — if they are fully offboarded
+"Transitioning" — if they are wrapping up
+✅ What Happens Automatically
+The row remains in the Master Tracker for history and reporting.
+The client is excluded from:
+Monthly doc generation
+Block hour syncing
+(Optional) You can hide their row in the Master Tracker to reduce visual clutter.
 
-🗂 Client Tools > Insert New Client into Directory
-This prompts you to enter the domain and status
+🔄 How to Reactivate a Client
+In the Client Directory, find the client.
+In Column D: Status, change it back to "Active".
+Run the menu item:
+ Client Tools > ➕ Add New Client (again — it won’t duplicate).
 
+ This will restore them into the Master Tracker if they were removed before, or re-enable monthly doc sync if their row is still present.
 
-After the new row is added at the bottom, fill in the following columns on that row only:
-Column
-What to Enter
-A
-Client Name (e.g., rightstuffmedia.com)
-B
-Plan Type (e.g., Starter, Pro)
-C
-Client Email
-D
-Status → Must be set to "Active"
-E–J
-Optional metadata (optional)
-K
-Leave blank – will be auto-filled by script
+🧮 Notes on Tracker Calculations
+Block Hours Remaining (Column I):
+This value can go negative to indicate overage.
+If a client uses more hours than they have available, the remaining value will show a negative balance.
+Formulas auto-fill from Row 2 whenever a new row is added via script.
 
-⚠️ Do NOT manually sort or insert into the middle of the Client Directory.
-
-🔹 Step 2: Add to the Master Tracker
-Go to the Master Tracker tab
-Run the tool:
-🗂 Client Tools > Insert All Missing Clients into Master Tracker
-✅ This will:
-Detect new Active clients in the Client Directory
-Append them to the bottom of Master Tracker
-Avoid formula misalignment and row shifting
-⚠️ NEVER manually insert rows into Master Tracker.
-
-🔹 Step 3: Sort and Verify
-Run:
-🗂 Client Tools > Sort Master Tracker A–Z
-Confirm the new client’s row has correct values:
-Column
-What to Confirm
-B
-Client Name is correct
-C
-Plan Type is populated
-D
-Monthly Hours appears (VLOOKUP)
-F
-Hours Used is empty or zero
-G–I
-Formulas are present and working
-M
-Email is populated
-O–Q
-First Name, Last Name, and Status filled
-
-
-🔹 Step 4: (Optional) Add Initial Block Hours
-If this client is starting with unused block hours:
-In their Master Tracker row
-Enter the starting value in:
-Column E: Block Hours Available
-
-
-
-🔹 Step 5: (Optional) Generate Folder & Support Doc
-In Apps Script, set:  const DRY_RUN = true;
-Run:
-🗂 Client Tools > Run Monthly Rollover & Docs
-
-
-✅ This will:
-Create their Drive folder (if not present)
-Create a support summary Google Doc
-Insert:
-Doc URL into Column N (Master Tracker)
-Folder URL into Column K (Client Directory)
-🔄 When ready to finalize, set DRY_RUN = false and rerun.
-
-✅ Final Checklist
-✅ Item
-Confirmed?
-Client appears in both Directory & Tracker
-✔️
-Master Tracker formulas filled correctly
-✔️
-Block Hours (if needed) are entered
-✔️
-Doc URL appears in Column N
-✔️
-Folder URL appears in Directory (Col K)
-✔️
 
 
 

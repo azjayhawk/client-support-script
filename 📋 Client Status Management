@@ -1,42 +1,26 @@
-📋 Client Status Management
-This section explains how to deactivate, hide, or reactivate clients without disrupting your system.
+🔕 How to Make a Client Inactive
+Go to the Client Directory tab.
+Locate the client you want to deactivate.
+In Column D: Status, change the value to either:
+"Inactive" — if they are fully offboarded
+"Transitioning" — if they are wrapping up
+✅ What Happens Automatically
+The row remains in the Master Tracker for history and reporting.
+The client is excluded from:
+Monthly doc generation
+Block hour syncing
+(Optional) You can hide their row in the Master Tracker to reduce visual clutter.
 
-✅ Marking a Client as Inactive
-Step 1: Update Client Directory
-Go to the Client Directory tab
-Find the client’s row
-Change Column D (Status) to:
-"Inactive" or "Transitioning"
-This ensures they are skipped by:
-Monthly document generation
-Folder creation
-Doc link updates
+🔄 How to Reactivate a Client
+In the Client Directory, find the client.
+In Column D: Status, change it back to "Active".
+Run the menu item:
+ Client Tools > ➕ Add New Client (again — it won’t duplicate).
 
-Step 2: Master Tracker
-If the client has already been added:
-Their row remains in Master Tracker
-They will be ignored during future script runs
-They will not be removed from Master Tracker automatically.
+ This will restore them into the Master Tracker if they were removed before, or re-enable monthly doc sync if their row is still present.
 
-Step 3: (Optional) Hide in Master Tracker
-To tidy your view:
-Right-click their row in Master Tracker
-Choose Hide row
-Optionally, leave a note in Column L:
-
- “Inactive as of Aug 2025”
-
-
-
-🔁 Reactivating a Client
-To bring back a paused or inactive client:
-Client Directory
-Change Column D back to "Active"
-
-
-Master Tracker
-If their row already exists: just unhide
-If they were not yet added:
-Run 🗂 Insert All Missing Clients into Master Tracker
-They will now appear in all future rollovers and doc generation.
-
+🧮 Notes on Tracker Calculations
+Block Hours Remaining (Column I):
+This value can go negative to indicate overage.
+If a client uses more hours than they have available, the remaining value will show a negative balance.
+Formulas auto-fill from Row 2 whenever a new row is added via script.
