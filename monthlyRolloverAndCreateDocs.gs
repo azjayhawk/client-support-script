@@ -38,13 +38,25 @@ function monthlyRolloverAndCreateDocs() {
   // === Loop through all clients ===
   rows.forEach((row, i) => {
     const rowNum = i + 2;
-    const [ , clientName, , , , , , blockUsed, remainingBlock, uncoveredOverage, clientEmail, , firstName, , status, domainExpire, accessToGA ] = row;
-    const trimmedName = typeof clientName === "string" ? clientName.trim() : "";
+    const [ , clientName, planType, , , , , blockUsed, remainingBlock, uncoveredOverage, clientEmail, , firstName, , status, domainExpire, accessToGA ] = row;
 
-    if (!trimmedName) {
-      console.log(`⚠️ Skipping row ${rowNum}: No client name found.`);
-      return;
-    }
+const trimmedName = typeof clientName === "string" ? clientName.trim() : "";
+if (!trimmedName) {
+  console.log(`⚠️ Skipping row ${rowNum}: No client name found.`);
+  return;
+}
+
+// ✅ Skip clients with "Hosting" plan
+if (planType && planType.toString().trim().toLowerCase() === "hosting") {
+  console.log(`⏭️ Skipping ${clientName} (Hosting plan)`);
+  return;
+}
+
+// ✅ Skip clients with "Inactive" or "Transitioning" status
+if (status && ["inactive", "transitioning"].includes(status.toString().trim().toLowerCase())) {
+  console.log(`⏭️ Skipping ${clientName} (${status} status)`);
+  return;
+}
 
     const docName = `${monthLabel} - ${clientName}`;
     const clientFolder = getOrCreateClientFolder(parentFolder, clientName);
