@@ -85,11 +85,14 @@ if (status && ["inactive", "transitioning"].includes(status.toString().trim().to
 image.setWidth(targetWidth).setHeight(targetHeight);
 
 body.appendParagraph(`Hello ${firstName || ""},\n`);
+body.appendParagraph(""); // blank line
 body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
 body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
 body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
 body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
+body.appendParagraph(""); // blank line
 body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
+body.appendParagraph(""); // blank line
 body.appendParagraph("\nFor our clients on a monthly plan:");
 
 const formattedDomainExpire = domainExpire instanceof Date
