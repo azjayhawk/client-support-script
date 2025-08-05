@@ -500,6 +500,65 @@ function unhideAllClientRows() {
   console.log('✅ All client rows unhidden.');
 }
 
+function resetCalculatedFormulas() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Master Tracker');
+  const startRow = 2;
+  const lastRow = sheet.getLastRow();
+  const numRows = lastRow - 1;
+
+  const clientNames = sheet.getRange(startRow, 2, numRows, 1).getValues(); // Column B
+
+  const formulasF = [];
+  const formulasH = [];
+  const formulasI = [];
+
+  for (let i = 0; i < clientNames.length; i++) {
+    const row = i + startRow;
+    const name = clientNames[i][0];
+    if (!name) {
+      formulasF.push([""]);
+      formulasH.push([""]);
+      formulasI.push([""]);
+      continue;
+    }
+    formulasF.push([`=IF(B${row}="", "", IFERROR(VLOOKUP(B${row}, 'Time Entry'!A:L, 12, FALSE), 0))`]);
+    formulasH.push([`=IF(F${row}=0, 0, IF(F${row}<=D${row}, 0, IF(E${row}<=0, F${row}-D${row}, MIN(F${row}-D${row}, E${row}))))`]);
+    formulasI.push([`=E${row} - H${row}`]); // Now allows negatives
+  }
+
+  sheet.getRange(startRow, 6, numRows, 1).setFormulas(formulasF); // Column F
+  sheet.getRange(startRow, 8, numRows, 1).setFormulas(formulasH); // Column H
+  sheet.getRange(startRow, 9, numRows, 1).setFormulas(formulasI); // Column I
+
+  // M–S columns
+  const cols = {
+    13: 3,  // M – Email
+    14: 7,  // N – First Name
+    15: 8,  // O – Last Name
+    16: 4,  // P – Status
+    17: 9,  // Q – Domain Expire
+    18: 10  // R – Access to GA
+  };
+
+  Object.entries(cols).forEach(([colIndex, vlookupIndex]) => {
+    const formulas = [];
+    for (let i = 0; i < clientNames.length; i++) {
+      const row = i + startRow;
+      const name = clientNames[i][0];
+      if (!name) {
+        formulas.push([""]);
+        continue;
+      }
+      const formula = `=IF(B${row}="", "", IFERROR(VLOOKUP(TO_TEXT(B${row}), FILTER('Client Directory'!A:J, 'Client Directory'!D:D = "Active"), ${vlookupIndex}, FALSE), ""))`;
+      formulas.push([formula]);
+    }
+    sheet.getRange(startRow, parseInt(colIndex), numRows, 1).setFormulas(formulas);
+  });
+
+  SpreadsheetApp.getUi().alert("✅ Calculated formulas have been reset in F, H, I, and M–S.");
+}
+
 /**
  * onOpen
  * Adds the Client Tools menu when the spreadsheet is opened.
