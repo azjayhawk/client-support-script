@@ -63,7 +63,14 @@ function monthlyRolloverAndCreateDocs() {
     const doc = DocumentApp.create(docName);
     const body = doc.getBody();
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
-    body.appendImage(logoBlob).setWidth(250);
+    const image = body.appendImage(logoBlob);
+    const originalWidth = image.getWidth();
+    const originalHeight = image.getHeight();
+    const targetWidth = 250;
+    const aspectRatio = originalHeight / originalWidth;
+    const targetHeight = targetWidth * aspectRatio;
+
+image.setWidth(targetWidth).setHeight(targetHeight);
 
     body.appendParagraph("\nHello,");
     body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
