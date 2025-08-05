@@ -5,7 +5,6 @@
  * Runs the end-of-month rollover process:
  * - Identifies the prior month
  * - Iterates over each client in "Master Tracker"
- * - Creates and logs a support summary Google Doc
  */
 function monthlyRolloverAndCreateDocs() {
   const DRY_RUN = false;
@@ -86,6 +85,7 @@ function monthlyRolloverAndCreateDocs() {
     masterSheet.getRange(rowNum, 14).setFormula(hyperlink);
     summarySheet.appendRow([clientName, clientEmail || "N/A", docUrl, timestamp]);
     console.log(`✅ Created support doc for ${clientName}`);
+    masterSheet.getRange(rowNum, 18).setFormula(`=HYPERLINK("${clientFolder.getUrl()}", "Open Folder")`);
     createdCount++;
   });
 
