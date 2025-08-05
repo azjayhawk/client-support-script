@@ -196,6 +196,7 @@ const mToS = {
 
 function insertAllMissingClients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
   const directorySheet = ss.getSheetByName('Client Directory');
   const masterSheet = ss.getSheetByName('Master Tracker');
 
@@ -215,6 +216,7 @@ function insertAllMissingClients() {
   }
 
   if (newClients.length === 0) {
+    ui.alert('✅ No missing clients to insert.');
     console.log('✅ No missing clients to insert.');
     return;
   }
@@ -225,22 +227,28 @@ function insertAllMissingClients() {
     const lastRow = masterSheet.getLastRow();
     masterSheet.insertRowAfter(lastRow);
 
-    // Copy formulas from Row 2
+    // Copy formulas from template row
     const templateRange = masterSheet.getRange(TEMPLATE_ROW, 1, 1, masterSheet.getLastColumn());
     const newRowRange = masterSheet.getRange(lastRow + 1, 1, 1, masterSheet.getLastColumn());
     templateRange.copyTo(newRowRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
 
     // Fill in values from Client Directory
-    masterSheet.getRange(lastRow + 1, 2).setValue(client[0]); // Client Name
-    masterSheet.getRange(lastRow + 1, 3).setValue(client[1]); // Plan Type
+    masterSheet.getRange(lastRow + 1, 2).setValue(client[0]);  // Client Name
+    masterSheet.getRange(lastRow + 1, 3).setValue(client[1]);  // Plan Type
     // ⚠️ Skip Column D (Monthly Hours) — preserve formula
     masterSheet.getRange(lastRow + 1, 15).setValue(client[3]); // Status
-    masterSheet.getRange(lastRow + 1, 11).setValue(client[2]); // Email (from Column C in Directory)
+    masterSheet.getRange(lastRow + 1, 11).setValue(client[2]); // Email
     masterSheet.getRange(lastRow + 1, 13).setValue(client[5]); // First Name
     masterSheet.getRange(lastRow + 1, 14).setValue(client[6]); // Last Name
+
+    // 🚫 Clear copied links/formulas from template row in Columns R & S
+    masterSheet.getRange(lastRow + 1, 18).clearContent(); // Report Folder URL
+    masterSheet.getRange(lastRow + 1, 19).clearContent(); // Report URL
   });
 
-  console.log(`✅ Inserted ${newClients.length} new client(s) into Master Tracker.`);
+  const message = `✅ Inserted ${newClients.length} new client(s) into Master Tracker.`;
+  console.log(message);
+  ui.alert(message);
 }
 
 /**
