@@ -38,7 +38,7 @@ function monthlyRolloverAndCreateDocs() {
   // === Loop through all clients ===
   rows.forEach((row, i) => {
     const rowNum = i + 2;
-    const [ , clientName, , , , , , blockUsed, remainingBlock, uncoveredOverage, , , clientEmail, firstName, , status, domainExpire, accessToGA ] = row;
+    const [ , clientName, , , , , , blockUsed, remainingBlock, uncoveredOverage, clientEmail, , firstName, , status, domainExpire, accessToGA ] = row;
     const trimmedName = typeof clientName === "string" ? clientName.trim() : "";
 
     if (!trimmedName) {
@@ -82,7 +82,7 @@ function monthlyRolloverAndCreateDocs() {
     file.moveTo(clientFolder);
     const docUrl = doc.getUrl();
     const hyperlink = `=HYPERLINK("${docUrl}", "Open Doc")`;
-    masterSheet.getRange(rowNum, 14).setFormula(hyperlink);
+    masterSheet.getRange(rowNum, 19).setFormula(hyperlink); // ✅ Column S (the 19th column)
     summarySheet.appendRow([clientName, clientEmail || "N/A", docUrl, timestamp]);
     console.log(`✅ Created support doc for ${clientName}`);
     masterSheet.getRange(rowNum, 18).setFormula(`=HYPERLINK("${clientFolder.getUrl()}", "Open Folder")`);
