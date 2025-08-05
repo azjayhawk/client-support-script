@@ -72,7 +72,7 @@ function monthlyRolloverAndCreateDocs() {
 
 image.setWidth(targetWidth).setHeight(targetHeight);
 
-body.appendParagraph("\nHello,");
+body.appendParagraph(`Hello ${firstName || ""},\n`);
 body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
 body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
 body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
@@ -88,7 +88,6 @@ const formattedDomainExpire = domainExpire instanceof Date
 body.appendParagraph("🔐 Domain Expiration: " + formattedDomainExpire);
     body.appendParagraph("📊 Access to Google Analytics: " + (accessToGA || "N/A"));
     body.appendParagraph("\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.");
-    body.appendParagraph("\n*If you have trouble accessing your support summary, let us know and we’ll send you a PDF version.*");
     doc.saveAndClose();
 
     const file = DriveApp.getFileById(doc.getId());
