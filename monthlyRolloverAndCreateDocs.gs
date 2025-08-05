@@ -507,6 +507,8 @@ function unhideAllClientRows() {
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('❤️ Client Tools')
+    .addItem('📄 Run Monthly Rollover + Create Docs', 'monthlyRolloverAndCreateDocs')
+    .addSeparator()
     .addItem('➕ Add Client and Sync to Master Tracker', 'addNewClientToTracker')
     .addSeparator()
     .addItem('📋 Insert All Missing Clients to Master Tracker', 'insertAllMissingClients')
