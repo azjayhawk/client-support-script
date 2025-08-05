@@ -72,14 +72,20 @@ function monthlyRolloverAndCreateDocs() {
 
 image.setWidth(targetWidth).setHeight(targetHeight);
 
-    body.appendParagraph("\nHello,");
-    body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
-    body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
-    body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
-    body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
-    body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
-    body.appendParagraph("\nFor our clients on a monthly plan:");
-    body.appendParagraph("🔐 Domain Expiration: " + (domainExpire || "N/A"));
+body.appendParagraph("\nHello,");
+body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
+body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
+body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
+body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
+body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
+body.appendParagraph("\nFor our clients on a monthly plan:");
+
+const formattedDomainExpire = domainExpire instanceof Date
+  ? Utilities.formatDate(domainExpire, timeZone, "MMM dd, yyyy")
+  : (domainExpire || "N/A");
+
+
+body.appendParagraph("🔐 Domain Expiration: " + formattedDomainExpire);
     body.appendParagraph("📊 Access to Google Analytics: " + (accessToGA || "N/A"));
     body.appendParagraph("\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.");
     body.appendParagraph("\n*If you have trouble accessing your support summary, let us know and we’ll send you a PDF version.*");
