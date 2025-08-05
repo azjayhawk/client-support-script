@@ -547,7 +547,7 @@ function onOpen() {
     .addItem('➕ Add Client and Sync to Master Tracker', 'addNewClientToTracker')
     .addSeparator()
     .addItem('📋 Insert All Missing Clients to Master Tracker', 'insertAllMissingClients')
-    .addItem('🔤 Sort Master Tracker A–Z', 'sortMasterTracker')
+    .addItem('🔤 Sort Master Tracker A–Z', 'sortMasterTrackerAZ')
     .addItem('🗂 Insert New Client into Directory', 'insertNewClientIntoDirectory')
     .addSeparator()
     .addItem('🙈 Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
