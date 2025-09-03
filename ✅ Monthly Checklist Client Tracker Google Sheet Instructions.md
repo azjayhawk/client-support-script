@@ -1,4 +1,4 @@
-Client Support Tracker URL - https://docs.google.com/spreadsheets/d/1j0h_R7IP8FkVcKGcygILeJe_HURfci0SkXjiJryPYZM/edit?gid=2070410174#gid=2070410174
+Client Support Tracker URL - https://docs.google.com/spreadsheets/d/1TnQ_FSgTGRbz0KqzqLPKHJw7oQu9sC4hLCbTVXkxXhM/edit?gid=0#gid=0
 
 Here’s a detailed End-of-Month Checklist based on your current monthlyRolloverAndCreateDocs() script and overall system:
 
