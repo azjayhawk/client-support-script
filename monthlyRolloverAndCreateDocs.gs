@@ -553,4 +553,7 @@ function onOpen() {
     .addItem('🙈 Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
     .addItem('🫣 Unhide All Client Rows', 'unhideAllClientRows')
     .addToUi();
+
+  // Add the safe menu too:
+  onOpen_AddSafeItems();
 }
