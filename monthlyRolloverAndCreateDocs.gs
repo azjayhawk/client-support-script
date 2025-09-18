@@ -131,7 +131,7 @@ function getOrCreateClientFolder(parentFolder, clientName) {
 /**
  * updateMasterTrackerFormulas
  * Rewrites static formulas in F (Hours Used), H (Block Used), I (Remaining Block)
- * and M–S (Client Directory lookups), using FILTER-based VLOOKUP to ensure only Active clients are referenced.
+ * and L–Q (Client Directory lookups), using FILTER-based VLOOKUP to ensure only Active clients are referenced.
  */
 function updateMasterTrackerFormulas() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -149,7 +149,8 @@ function updateMasterTrackerFormulas() {
     if (!b) {
       colF.push([""]); colH.push([""]); colI.push([""]); continue;
     }
-    colF.push([`=IF(B${row}="", "", IFERROR(VLOOKUP(B${row}, 'Time Entry'!A:L, 12, FALSE), 0))`]);
+    // Uses Time Entry column O (15th) rather than L (12th)
+    colF.push([`=IF(B${row}="", "", IFERROR(VLOOKUP(B${row}, 'Time Entry'!A:O, 15, FALSE), 0))`]);
     colH.push([`=IF(F${row}=0, 0, IF(F${row}<=D${row}, 0, IF(E${row}<=0, F${row}-D${row}, MIN(F${row}-D${row}, E${row}))))`]);
     colI.push([`=MAX(E${row} - H${row}, 0)`]);
   }
@@ -157,15 +158,15 @@ function updateMasterTrackerFormulas() {
   trackerSheet.getRange(startRow, 8, colH.length, 1).setFormulas(colH); // H
   trackerSheet.getRange(startRow, 9, colI.length, 1).setFormulas(colI); // I
 
-  // === M–S using FILTER-based VLOOKUP ===
-const mToS = {
-  L: { col: 12, index: 3 },  // Support Summary Link
-  M: { col: 13, index: 7 },  // First Name
-  N: { col: 14, index: 8 },  // Last Name
-  O: { col: 15, index: 4 },  // Status
-  P: { col: 16, index: 9 },  // Domain Expire
-  Q: { col: 17, index: 10 }, // Access to GA
-};
+  // === L–Q using FILTER-based VLOOKUP (Active-only from Client Directory) ===
+  const mToS = {
+    L: { col: 12, index: 3 },  // Support Summary Link
+    M: { col: 13, index: 7 },  // First Name
+    N: { col: 14, index: 8 },  // Last Name
+    O: { col: 15, index: 4 },  // Status
+    P: { col: 16, index: 9 },  // Domain Expire
+    Q: { col: 17, index: 10 }, // Access to GA
+  };
 
   Object.entries(mToS).forEach(([_, cfg]) => {
     const output = [];
@@ -179,7 +180,7 @@ const mToS = {
     trackerSheet.getRange(startRow, cfg.col, output.length, 1).setFormulas(output);
   });
 
-  SpreadsheetApp.getUi().alert("✅ Formulas updated in Columns F, H, I, and M–S.");
+  SpreadsheetApp.getUi().alert("✅ Formulas updated in Columns F, H, I, and L–Q.");
 }
 
 /**
@@ -249,65 +250,6 @@ function insertAllMissingClients() {
   const message = `✅ Inserted ${newClients.length} new client(s) into Master Tracker.`;
   console.log(message);
   ui.alert(message);
-}
-
-/**
- * 
- * PURPOSE:
- * This function hides rows in the "Master Tracker" sheet for clients marked as
- * "Inactive" or "Transitioning" in the Status column.
- * It is used for visual clarity without deleting or removing any data.
- * 
- * Assumes:
- * - Header is in Row 1
- * - Status is in Column O (Column 15)
- *
- * USAGE:
- * - Automatically runs from the "Client Tools" custom menu.
- * - Pair with `unhideAllClientRows()` to show all clients again.
- */
-
-function hideInactiveAndTransitioningRows() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Master Tracker');
-
-  const START_ROW = 2;
-  const STATUS_COL = 15; // ✅ Column O — corrected from Column Q
-  const numRows = sheet.getLastRow() - START_ROW + 1;
-  const data = sheet.getRange(START_ROW, 1, numRows, sheet.getLastColumn()).getDisplayValues();
-
-  // Unhide all rows before applying filter
-  sheet.showRows(START_ROW, sheet.getMaxRows() - 1);
-
-  let hiddenCount = 0;
-
-  for (let i = 0; i < data.length; i++) {
-    const statusRaw = data[i][STATUS_COL - 1];
-    const status = statusRaw.toLowerCase().trim();
-
-    console.log(`Row ${i + START_ROW}: Status = "${statusRaw}" → "${status}"`);
-
-    if (status === 'inactive' || status === 'transitioning') {
-      sheet.hideRows(i + START_ROW);
-      console.log(`→ Hiding row ${i + START_ROW}`);
-      hiddenCount++;
-    }
-  }
-
-  console.log(`✅ Finished: ${hiddenCount} rows hidden.`);
-}
-
-/**
- * PURPOSE:
- * Utility function to unhide all client rows in the "Master Tracker" sheet.
- * 
- * USAGE:
- * - Manually run from the "Client Tools" menu if you want to view all clients again.
- */
-
-function unhideAllClientRows() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker');
-  sheet.showRows(2, sheet.getMaxRows() - 1); // Unhide all rows below header
 }
 
 /**
@@ -473,10 +415,10 @@ function addNewClientToTracker() {
 
     const templateRow = masterSheet.getRange(2, 1, 1, masterSheet.getLastColumn());
     const newTrackerRow = masterSheet.getRange(insertRow + 1, 1, 1, masterSheet.getLastColumn());
-    templateRow.copyTo(newTrackerRow, SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);  // <-- Updated here
+    templateRow.copyTo(newTrackerRow, SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
 
-  // === Prevent auto-hyperlinking of Client Name ===
-  masterSheet.getRange(insertRow + 1, 2).setNumberFormat('@STRING@');
+    // Prevent auto-hyperlinking of Client Name
+    masterSheet.getRange(insertRow + 1, 2).setNumberFormat('@STRING@');
 
     masterSheet.getRange(insertRow + 1, 2).setValue(clientRow[0]);  // Client Name
     masterSheet.getRange(insertRow + 1, 3).setValue(clientRow[1]);  // Plan Type
@@ -496,9 +438,15 @@ function addNewClientToTracker() {
     console.log('✅ Master Tracker sorted.');
   }
 
-  ui.alert(`Client "${clientName}" added and synced to Master Tracker.`);
-}
+  // === Step 5: Ensure the client exists in Weekly Time Entry (permanent) ===
+  try {
+    ensureClientInTimeEntry_(clientName);
+  } catch (e) {
+    console.warn('Time Entry add skipped: ' + e);
+  }
 
+  ui.alert(`Client "${clientName}" added and synced to Master Tracker & Time Entry.`);
+}
 /**
  * Hides rows in the Master Tracker for clients marked as Inactive or Transitioning.
  * Assumes:
@@ -553,7 +501,66 @@ function onOpen() {
     .addItem('🙈 Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
     .addItem('🫣 Unhide All Client Rows', 'unhideAllClientRows')
     .addToUi();
-
-  // Add the safe menu too:
-  onOpen_AddSafeItems();
 }
+// Time Entry sheet settings (GLOBAL)
+const TIME_ENTRY_SHEET = 'Time Entry';      // tab name
+const TIME_ENTRY_TEMPLATE_ROW = 2;          // template row with formulas/validation to copy
+
+/**
+ * === Time Entry Helpers ===
+ * Ensures clients are also present in the "Time Entry" tab.
+ * Guarantees a single row for the client in Time Entry:
+ *  • Doesn’t bail out if the sheet only has headers
+ *  • Copies the Row 2 template (formulas/validation)
+ *  • Sets the client name in Column A as text (avoids auto-linking)
+ *  • Idempotent (does nothing if the client already exists)
+ */
+function ensureClientInTimeEntry_(clientName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const te = ss.getSheetByName(TIME_ENTRY_SHEET);
+  if (!te) throw new Error(`Sheet "${TIME_ENTRY_SHEET}" not found.`);
+
+  const lastRow = te.getLastRow(); // may be 1 if only headers
+
+  // SAFE: only read names if at least one data row exists
+  let names = [];
+  if (lastRow >= 2) {
+    names = te.getRange(2, 1, lastRow - 1, 1)
+      .getValues()
+      .map(r => (r[0] || '').toString().trim().toLowerCase());
+  }
+
+  const target = (clientName || '').toString().trim().toLowerCase();
+  if (!target) return false;
+  if (names.indexOf(target) !== -1) return false; // already present
+
+  // Insert a new row, copy template from Row 2
+  const insertAt = lastRow + 1;                 // if only header, this becomes 2
+  te.insertRowAfter(insertAt - 1);              // inserts after row 1 safely
+  te.getRange(TIME_ENTRY_TEMPLATE_ROW, 1, 1, te.getLastColumn())
+    .copyTo(te.getRange(insertAt, 1, 1, te.getLastColumn()), { contentsOnly: false });
+
+  te.getRange(insertAt, 1).setValue(clientName).setNumberFormat('@STRING@'); // prevent auto-link
+  console.log(`✅ Added "${clientName}" to Time Entry at row ${insertAt}`);
+  return true;
+}
+
+/**
+ * Utility to sync all clients from Master Tracker into Time Entry
+ * (Run manually if needed).
+ */
+function syncAllClientsToTimeEntry() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const tracker = ss.getSheetByName('Master Tracker');
+  const names = tracker.getRange(2, 2, tracker.getLastRow() - 1, 1).getValues();
+
+  let added = 0;
+  names.forEach(r => {
+    const clientName = r[0];
+    if (clientName && ensureClientInTimeEntry_(clientName)) {
+      added++;
+    }
+  });
+  SpreadsheetApp.getUi().alert(`✅ Sync complete. ${added} client(s) added to Time Entry.`);
+}
+
