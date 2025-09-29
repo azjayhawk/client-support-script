@@ -1,242 +1,238 @@
-/******** SAFE MONTHLY (ROLLING ROW PER CLIENT) This one has an error and pulls from the wrong column for hours remaining. ********/
+/**************************************
+ * SAFE MONTHLY MODULE – RadiateU
+ * ------------------------------------
+ * This module handles the generation
+ * of monthly Google Docs for each client.
+ *
+ * It supports:
+ *  - Document creation/updating
+ *  - Folder management
+ *  - Monthly summaries
+ *  - Client deduplication
+ *
+ * Designed for non-coders: Comments
+ * explain each function clearly.
+ **************************************/
 
-// ---- CONFIG ----
-const MT_SHEET             = 'Master Tracker';
-const TEMPLATE_ROW_IDX     = 2;
-const FIRST_DATA_ROW_IDX   = 2;
-const REPORT_FOLDER_COL    = 18; // R
-const REPORT_DOC_COL       = 19; // S
-const HIDDEN_KEY_HEADER    = 'KEY';     // client key (not month)
-const HIDDEN_DOCID_HEADER  = 'DOC_ID';  // Google Doc ID
-const LOGO_FILE_ID         = '1fW300SGxEFVFvndaLkkWz3_O7L3BOq84';
-const PARENT_FOLDER_ID     = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-';
+// --- CONFIGURATION CONSTANTS ---
 
-// ---- Utilities ----
-function normalizeId_(v){ return String(v||'').toLowerCase().trim(); }
-function currentMonthLabel_(tz){
-  const d = new Date(); return Utilities.formatDate(d, tz||Session.getScriptTimeZone(), 'MMMM yyyy');
-}
-function buildClientKey_(clientName){ return normalizeId_((clientName||'')); }
+// Sheet/tab names
+const MT_SHEET = 'Master Tracker';
 
-// Ensure KEY + DOC_ID columns exist (hidden) and return their indexes
-function ensureHiddenColumns_(){
+// Template row in the Master Tracker for formulas/formatting
+const TEMPLATE_ROW_IDX = 2;
+const FIRST_DATA_ROW_IDX = 2;
+
+// Report columns in Master Tracker (where links to folder/docs are stored)
+const REPORT_FOLDER_COL = 18; // Column R
+const REPORT_DOC_COL = 19;    // Column S
+
+// Hidden tracking columns (not visible to user but used by script)
+const KEY_HIDDEN_COL_NAME = "KEY";
+const DOC_ID_HIDDEN_COL_NAME = "DOC_ID";
+
+// Branding resources
+const LOGO_FILE_ID = '1fW300SGxEFVFvndaLkkWz3_O7L3BOq84';
+const PARENT_FOLDER_ID = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-'; // Master parent folder for all clients
+
+// --- UTILITY FUNCTIONS ---
+
+// Creates/ensures hidden columns for internal tracking (used to avoid duplicates)
+function ensureHiddenColumns_() {
   const sh = SpreadsheetApp.getActive().getSheetByName(MT_SHEET);
-  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
-  function ensureCol(header){
-    let idx = headers.indexOf(header)+1;
-    if (idx <= 0){
-      const insertAt = sh.getLastColumn()+1;
-      sh.insertColumnAfter(sh.getLastColumn());
-      sh.getRange(1, insertAt).setValue(header);
-      sh.hideColumns(insertAt);
-      return insertAt;
-    } else {
-      if (!sh.isColumnHiddenByUser(idx)) sh.hideColumns(idx);
-      return idx;
+  const header = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+
+  let keyIndex = header.indexOf(KEY_HIDDEN_COL_NAME) + 1;
+  let docIdIndex = header.indexOf(DOC_ID_HIDDEN_COL_NAME) + 1;
+
+  if (!keyIndex) {
+    keyIndex = sh.getLastColumn() + 1;
+    sh.getRange(1, keyIndex).setValue(KEY_HIDDEN_COL_NAME);
+  }
+
+  if (!docIdIndex) {
+    docIdIndex = sh.getLastColumn() + 1;
+    sh.getRange(1, docIdIndex).setValue(DOC_ID_HIDDEN_COL_NAME);
+  }
+
+  return [keyIndex, docIdIndex];
+}
+
+// Converts current date to a label like “August 2025”
+function currentMonthLabel_(tz = "America/Phoenix") {
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+  return Utilities.formatDate(lastMonth, tz, "MMMM yyyy");
+}
+
+// Normalizes a string into a simple key (e.g., lowercased, no special characters)
+function buildClientKey_(clientName) {
+  return clientName.toLowerCase().replace(/[^\w]+/g, "");
+}
+
+// Build an index of first occurrence of each client (by key) in the Master Tracker
+function buildClientIndex_(sh, keyCol) {
+  const data = sh.getRange(FIRST_DATA_ROW_IDX, keyCol, sh.getLastRow() - 1).getValues();
+  const index = {};
+  data.forEach((row, i) => {
+    const key = row[0];
+    if (key && !(key in index)) {
+      index[key] = i + FIRST_DATA_ROW_IDX;
     }
+  });
+  return index;
+}
+
+// Copy formulas/formatting from template row to a new client row
+function copyTemplateRowTo_(sh, targetRow) {
+  const template = sh.getRange(TEMPLATE_ROW_IDX, 1, 1, sh.getLastColumn());
+  const dest = sh.getRange(targetRow, 1, 1, sh.getLastColumn());
+  template.copyTo(dest, { contentsOnly: false });
+}
+
+// Makes sure a client folder exists in Drive (and creates it if not)
+function getOrCreateClientFolder_(clientName) {
+  const parentFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
+  const folders = parentFolder.getFoldersByName(clientName);
+  return folders.hasNext() ? folders.next() : parentFolder.createFolder(clientName);
+}
+
+// Tries to find a doc by name inside a folder
+function findMonthlyDocInFolder_(folder, docName) {
+  const files = folder.getFilesByName(docName);
+  return files.hasNext() ? files.next() : null;
+}
+
+// Main function that fills out the Google Doc body
+function ensureAndFillMonthlyDocFast_(doc, row, monthLabel, clientName) {
+  const docBody = doc.getBody();
+  docBody.clear();
+
+  const HOURS_USED_COL = 5;
+  const REMAINING_BLOCK_COL = 8;
+  const OVERAGE_HOURS_COL = 9;
+  const DOMAIN_EXPIRY_COL = 16;
+  const GA_ACCESS_COL = 17;
+  const CLIENT_FIRST_NAME_COL = 13;
+
+  const hoursUsed = Number(row[HOURS_USED_COL] || 0).toFixed(1);
+  const remainingBlock = Number(row[REMAINING_BLOCK_COL] || 0).toFixed(1);
+  const overageUncovered = Number(row[OVERAGE_HOURS_COL] || 0).toFixed(1);
+  const domainExpiration = row[DOMAIN_EXPIRY_COL] || "Not available";
+  const accessToGA = (row[GA_ACCESS_COL] || "").toString().toLowerCase() === "yes" ? "Yes" : "No";
+  const firstName = row[CLIENT_FIRST_NAME_COL] || "there";
+
+  const logoImage = DriveApp.getFileById(LOGO_FILE_ID).getBlob();
+  docBody.appendImage(logoImage).setWidth(120);
+
+  docBody.appendParagraph(`Hello ${firstName},`)
+    .setSpacingAfter(16)
+    .setFontSize(11);
+
+  docBody.appendParagraph(`Here’s your monthly website support summary for **${clientName}** – **${monthLabel}**:`)
+    .setSpacingAfter(12)
+    .setFontSize(11);
+
+  docBody.appendParagraph(`📊 **Support Summary**`)
+    .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+
+  docBody.appendParagraph(
+    `• **Support Hours Logged:** ${hoursUsed} hrs\n` +
+    `• **Remaining Block Hours:** ${remainingBlock} hrs\n` +
+    `• **Overage Hours (Uncovered):** ${overageUncovered} hrs`
+  ).setFontSize(11).setSpacingAfter(12);
+
+  docBody.appendParagraph(`Need extra time? You can request additional support hours here:\n👉 https://radiateu.com/request-support-time`)
+    .setFontSize(10)
+    .setSpacingAfter(18);
+
+  docBody.appendParagraph(`🔐 **Account Info**`)
+    .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+
+  docBody.appendParagraph(
+    `• 🔐 **Domain Expiration:** ${domainExpiration}\n` +
+    `• 📊 **Access to Google Analytics:** ${accessToGA}`
+  ).setFontSize(11).setSpacingAfter(16);
+
+  docBody.appendParagraph(`If you have any questions, just reply to this message or contact us at support@radiateu.com. We’re happy to help!`)
+    .setFontSize(10)
+    .setSpacingAfter(10);
+
+  docBody.appendParagraph(`*Having trouble accessing your support summary? Let us know and we’ll send you a PDF version.*`)
+    .setFontSize(9)
+    .setItalic(true);
+
+  return doc;
+}
+
+// This function removes duplicate client rows in the Master Tracker (keeps the first)
+function dedupeByClientKeepFirst_() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(MT_SHEET);
+  const [keyIndex] = ensureHiddenColumns_();
+  const index = buildClientIndex_(sh, keyIndex);
+
+  const rowsToDelete = [];
+  const seen = new Set();
+
+  Object.entries(index).forEach(([key, row]) => seen.add(row));
+  for (let i = sh.getLastRow(); i >= FIRST_DATA_ROW_IDX; i--) {
+    if (!seen.has(i)) rowsToDelete.push(i);
   }
-  return { keyCol: ensureCol(HIDDEN_KEY_HEADER), docIdCol: ensureCol(HIDDEN_DOCID_HEADER) };
+  rowsToDelete.forEach(row => sh.deleteRow(row));
 }
 
-function copyTemplateRowTo_(sh, targetRow){
-  const lastCol = sh.getLastColumn();
-  sh.getRange(TEMPLATE_ROW_IDX, 1, 1, lastCol)
-    .copyTo(sh.getRange(targetRow, 1, 1, lastCol), { contentsOnly: false });
+// Adds the 🛡️ Safe Tools menu to Sheets UI
+function onOpen_AddSafeItems() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu("🛡️ Client Tools (Safe)")
+    .addItem("📄 Run Monthly (Rolling rows)", "monthlyRolloverAndCreateDocsSafe")
+    .addItem("🧹 Dedupe by Client (keep first)", "dedupeByClientKeepFirst_")
+    .addToUi();
 }
 
-// Build one-time index: client key -> row #
-function buildClientIndex_(sh, keyCol){
-  const last = sh.getLastRow();
-  const map = new Map();
-  if (last >= FIRST_DATA_ROW_IDX){
-    const keys = sh.getRange(FIRST_DATA_ROW_IDX, keyCol, last - FIRST_DATA_ROW_IDX + 1, 1).getValues();
-    for (let i=0;i<keys.length;i++){
-      const k = String(keys[i][0] || '');
-      if (k && !map.has(k)) map.set(k, FIRST_DATA_ROW_IDX + i); // keep first occurrence
-    }
-  }
-  return map;
-}
+// MAIN FUNCTION – creates or updates the monthly summary docs
+function monthlyRolloverAndCreateDocsSafe() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName(MT_SHEET);
+  const data = sheet.getRange(FIRST_DATA_ROW_IDX, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  const [keyColIdx, docIdColIdx] = ensureHiddenColumns_();
+  const monthLabel = currentMonthLabel_();
 
-// Upsert a SINGLE rolling row per client
-function upsertClientRow_(sh, keyCol, docIdCol, indexMap,
-  monthLabel, clientName, folderUrl, docUrl, docId){
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    const planType = row[2];  // Column C
+    const status = row[15];   // Column O
+    const clientName = row[1]; // Column B
 
-  const key = buildClientKey_(clientName);
-  let row = indexMap.get(key) || -1;
+    // Skip Hosting, Inactive, and Transitioning clients
+    if (!clientName || planType === "Hosting" || ["Inactive", "Transitioning"].includes(status)) continue;
 
-  if (row === -1){
-    const last = sh.getLastRow();
-    sh.insertRowsAfter(last, 1);
-    row = last + 1;
-    copyTemplateRowTo_(sh, row);
-    sh.getRange(row, 1).setValue(monthLabel);   // A: Month label (rolling)
-    sh.getRange(row, 2).setValue(clientName);   // B: Client Name
-    sh.getRange(row, keyCol).setValue(key);     // hidden client key
-    indexMap.set(key, row);
-  } else {
-    // Update in place (rolling)
-    sh.getRange(row, 1).setValue(monthLabel);
-    sh.getRange(row, 2).setValue(clientName);
-  }
+    const key = buildClientKey_(clientName);
+    const folder = getOrCreateClientFolder_(clientName);
+    const docName = `Support Summary – ${monthLabel}`;
+    let doc = null;
 
-  if (folderUrl) sh.getRange(row, REPORT_FOLDER_COL).setFormula(`=HYPERLINK("${folderUrl}", "Open Folder")`);
-  if (docUrl)    sh.getRange(row, REPORT_DOC_COL).setFormula(`=HYPERLINK("${docUrl}", "Open Doc")`);
-  if (docId)     sh.getRange(row, docIdCol).setValue(docId);
-
-  return row;
-}
-
-// Drive helpers
-function getOrCreateClientFolder_(parentFolder, name){
-  const it = parentFolder.getFoldersByName(name);
-  return it.hasNext() ? it.next() : parentFolder.createFolder(name);
-}
-function findMonthlyDocInFolder_(folder, name){
-  const it = folder.getFilesByName(name);
-  return it.hasNext() ? it.next() : null;
-}
-
-// Fast doc create/reuse (prefers DOC_ID, falls back to one name search, else create)
-function ensureAndFillMonthlyDocFast_(folder, name, existingDocId, rowData, tz){
-  let file, doc;
-  if (existingDocId){
-    try { doc = DocumentApp.openById(existingDocId); file = DriveApp.getFileById(existingDocId); } catch(e){}
-  }
-  if (!doc){
-    file = findMonthlyDocInFolder_(folder, name);
-    if (file){ doc = DocumentApp.openById(file.getId()); }
-    else {
-      doc = DocumentApp.create(name);
-      file = DriveApp.getFileById(doc.getId());
-      folder.addFile(file);
-      // remove from My Drive root only
-      const rootId = DriveApp.getRootFolder().getId();
-      const parents = file.getParents();
-      while (parents.hasNext()){
-        const p = parents.next();
-        if (p.getId() === rootId) p.removeFile(file);
+    const existingDocId = sheet.getRange(i + FIRST_DATA_ROW_IDX, docIdColIdx).getValue();
+    if (existingDocId) {
+      try {
+        doc = DocumentApp.openById(existingDocId);
+      } catch (e) {
+        doc = null;
       }
     }
+
+    if (!doc) {
+      const existing = findMonthlyDocInFolder_(folder, docName);
+      doc = existing
+        ? DocumentApp.openById(existing.getId())
+        : DocumentApp.create(docName);
+    }
+
+    ensureAndFillMonthlyDocFast_(doc, row, monthLabel, clientName);
+    const docUrl = doc.getUrl();
+
+    sheet.getRange(i + FIRST_DATA_ROW_IDX, REPORT_FOLDER_COL).setFormula(`=HYPERLINK("${folder.getUrl()}", "📂 Folder")`);
+    sheet.getRange(i + FIRST_DATA_ROW_IDX, REPORT_DOC_COL).setFormula(`=HYPERLINK("${docUrl}", "📄 Summary")`);
+    sheet.getRange(i + FIRST_DATA_ROW_IDX, keyColIdx).setValue(key);
+    sheet.getRange(i + FIRST_DATA_ROW_IDX, docIdColIdx).setValue(doc.getId());
   }
-
-  // (Re)write the doc body (your same layout)
-  const body = doc.getBody();
-  body.clear();
-  try {
-    const logoBlob = DriveApp.getFileById(LOGO_FILE_ID).getBlob();
-    const image = body.appendImage(logoBlob);
-    const targetWidth = 250, ar = image.getHeight()/image.getWidth();
-    image.setWidth(targetWidth).setHeight(targetWidth*ar);
-  } catch(e){ Logger.log('Logo insert failed (continuing): ' + e); }
-
-  const [clientName, blockUsed, remainingBlock, uncoveredOverage, firstName, domainExpire, accessToGA] = rowData;
-  body.appendParagraph(`Hello ${firstName || ''},\n`);
-  body.appendParagraph('');
-  body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${name.split(' - ')[0]}:`);
-  body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
-  body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
-  body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
-  body.appendParagraph('');
-  body.appendParagraph('\nIf you need additional support hours, visit https://radiateu.com/request-support-time.');
-  body.appendParagraph('');
-  body.appendParagraph('\nFor our clients on a monthly plan:');
-  const tzId = tz || Session.getScriptTimeZone();
-  const formattedDomainExpire = (domainExpire instanceof Date)
-    ? Utilities.formatDate(domainExpire, tzId, 'MMM dd, yyyy')
-    : (domainExpire || 'N/A');
-  body.appendParagraph('🔐 Domain Expiration: ' + formattedDomainExpire);
-  body.appendParagraph('📊 Access to Google Analytics: ' + (accessToGA || 'N/A'));
-  body.appendParagraph('\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.');
-  doc.saveAndClose();
-
-  return { url: doc.getUrl(), id: doc.getId() };
-}
-
-// -------- Driver: ROLLING ROW per client --------
-function monthlyRolloverAndCreateDocsSafe(){
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(MT_SHEET);
-  const tz = ss.getSpreadsheetTimeZone();
-
-  // Use PRIOR month label to match your existing behavior
-  const d = new Date(); d.setMonth(d.getMonth()-1);
-  const monthLabel = Utilities.formatDate(d, tz, 'MMMM yyyy');
-
-  const parentFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
-  const { keyCol, docIdCol } = ensureHiddenColumns_();
-  const data = sh.getDataRange().getValues();
-  if (data.length <= 1) return;
-
-  // Build client index once (first occurrence wins)
-  const clientIndex = buildClientIndex_(sh, keyCol);
-
-  let changed = 0;
-  for (let i = 1; i < data.length; i++){
-    const row = data[i];
-    const clientName = (row[1] || '').toString().trim();               // B
-    const planType   = (row[2] || '').toString().trim().toLowerCase(); // C
-    const status     = (row[14]|| '').toString().trim().toLowerCase(); // O
-    if (!clientName || planType === 'hosting' || status === 'inactive' || status === 'transitioning') continue;
-
-    const clientFolder = getOrCreateClientFolder_(parentFolder, clientName);
-    const docName = `${monthLabel} - ${clientName}`;
-
-    // Fast path: use DOC_ID already stored on the indexed row (if present)
-    const indexedRow = clientIndex.get(buildClientKey_(clientName));
-    const existingDocId = indexedRow ? (sh.getRange(indexedRow, docIdCol).getValue() || null) : null;
-
-    const { url, id } = ensureAndFillMonthlyDocFast_(
-      clientFolder,
-      docName,
-      existingDocId,
-      [
-        clientName,
-        row[7]  || 0,  // H: Block Used
-        row[8]  || 0,  // I: Remaining
-        row[9]  || 0,  // J: Overage (Uncovered)
-        row[12] || '', // M: First Name
-        row[15] || '', // P: Domain Expire
-        row[16] || ''  // Q: Access to GA
-      ],
-      tz
-    );
-
-    upsertClientRow_(sh, keyCol, docIdCol, clientIndex,
-      monthLabel, clientName, clientFolder.getUrl(), url, id);
-
-    changed++;
-  }
-
-  SpreadsheetApp.getUi().alert(`✅ ${changed} client row(s) updated (rolling rows; no duplicates).`);
-}
-
-/* Optional: simple dedupe by client key (keeps first) */
-function dedupeByClientKeepFirst_(){
-  const sh = SpreadsheetApp.getActive().getSheetByName(MT_SHEET);
-  const { keyCol } = ensureHiddenColumns_();
-  const last = sh.getLastRow();
-  if (last < FIRST_DATA_ROW_IDX) return 0;
-
-  const keys = sh.getRange(FIRST_DATA_ROW_IDX, keyCol, last - FIRST_DATA_ROW_IDX + 1, 1).getValues();
-  const seen = new Set(); const toDelete = [];
-  for (let i=0;i<keys.length;i++){
-    const k = String(keys[i][0] || '');
-    const abs = FIRST_DATA_ROW_IDX + i;
-    if (!k){ continue; }
-    if (seen.has(k)) toDelete.push(abs);
-    else seen.add(k);
-  }
-  toDelete.sort((a,b)=>b-a).forEach(r=>sh.deleteRow(r));
-  SpreadsheetApp.getUi().alert(`🧹 Removed ${toDelete.length} duplicate row(s) by client.`);
-  return toDelete.length;
-}
-
-// ---- Optional extra menu (your existing onOpen can call this) ----
-function onOpen_AddSafeItems(){
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('🛡️ Client Tools (Safe)')
-    .addItem('📄 Run Monthly (Rolling rows)', 'monthlyRolloverAndCreateDocsSafe')
-    .addItem('🧹 Dedupe by Client (keep first)', 'dedupeByClientKeepFirst_')
-    .addToUi();
 }
