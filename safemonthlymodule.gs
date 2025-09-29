@@ -1,4 +1,4 @@
-/******** SAFE MONTHLY (ROLLING ROW PER CLIENT) ********/
+/******** SAFE MONTHLY (ROLLING ROW PER CLIENT) This one has an error and pulls from the wrong column for hours remaining. ********/
 
 // ---- CONFIG ----
 const MT_SHEET             = 'Master Tracker';
