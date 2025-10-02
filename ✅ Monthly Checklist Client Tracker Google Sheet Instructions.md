@@ -1,12 +1,12 @@
 Client Support Tracker URL - https://docs.google.com/spreadsheets/d/1TnQ_FSgTGRbz0KqzqLPKHJw7oQu9sC4hLCbTVXkxXhM/edit?gid=0#gid=0
 
-Here’s a detailed End-of-Month Checklist based on your current monthlyRolloverAndCreateDocs() script and overall system:
+Here’s a detailed End-of-Month Checklist based on your current monthlyRolloverAndCreateDocsSafe() script and overall system:
 
 ⸻
 
 ✅ End-of-Month Checklist
 
-Purpose: Prepare your tracker, generate client support docs, and reset formulas to begin the new month.
+Purpose: Prepare your tracker, generate client support docs using Safe Mode, and reset formulas to begin the new month.
 
 ⸻
 
@@ -36,31 +36,31 @@ Purpose: Prepare your tracker, generate client support docs, and reset formulas 
 
 🔹 RUN Monthly Script
 
-* Run: Client Tools > [Script Button] Or manually run: monthlyRolloverAndCreateDocs() from Apps Script.
+* Run: Client Tools > [Safe Mode Script Button] Or manually run: monthlyRolloverAndCreateDocsSafe() from Apps Script.  
+* Safe Mode is the recommended process and maintains one rolling row per client to prevent duplicate document creation.
 
 Script Will:
 
-* Calculate the previous month’s name (e.g., “July 2025”)
-* Create Google Docs for each Active client
-* Includes logo, support summary, block hours used, remaining, and overage
-* Includes info from the directory (Domain Expire, Google Analytics access)
-* Trash any duplicate documents from prior runs
-* Move the new doc into the client’s Google Drive folder
-* Insert a link in Column N (“Support Summary Link”) in the Master Tracker
-* Log info in the Document Summary
+* Calculate the previous month’s name (e.g., “July 2025”)  
+* Create or update a single Google Doc per Active client with rolling monthly updates  
+* Include logo, support summary, block hours used, remaining, and overage  
+* Include info from the directory (Domain Expire, Google Analytics access)  
+* Hide the KEY and DOC_ID columns used for tracking internally  
+* Insert document links in Columns R and S (“Support Summary Link” and related) in the Master Tracker  
+* Prevent duplicate documents by updating existing ones rather than creating new files  
 
 ⸻
 
 🔹 AFTER Script Runs
 
-* Review Output
-* Check the Document Summary tab to confirm:
-  * All expected clients are listed
-  * Docs were successfully created
+* Review Output  
+* Check the Master Tracker to confirm:  
+  * All expected clients have updated links in Columns R and S  
+  * Docs were successfully created or updated  
   * Spot check a few generated docs in client folders
 
-* Hide Inactive Clients
-  * Use: Client Tools > 🙈 Hide Inactive/Transitioning Rows
+* Hide Inactive Clients  
+  * Use: Client Tools > 🙈 Hide Inactive/Transitioning Rows  
   * This will hide all rows in the Master Tracker for non-active clients
 
 (Optional) Save/Archive the Month
@@ -69,10 +69,7 @@ Script Will:
 
 ⸻
 
-🧠 Notes
-Dry Run Mode
-
-* You can toggle const DRY_RUN = true in the script to simulate doc creation without actually generating files.
+🧠 Notes  
 
 Client Folder Creation
 
@@ -80,4 +77,4 @@ Client Folder Creation
 
 Hyperlink Placement
 
-* Doc links are inserted into Column N.
+* Doc links are inserted into Columns R and S.
