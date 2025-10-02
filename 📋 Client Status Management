@@ -17,10 +17,10 @@ In Column D: Status, change it back to "Active".
 Run the menu item:
  Client Tools > ➕ Add New Client (again — it won’t duplicate).
 
- This will restore them into the Master Tracker if they were removed before, or re-enable monthly doc sync if their row is still present.
+ This will re-enable monthly doc sync if their row is still present (rows are never removed now).
 
 🧮 Notes on Tracker Calculations
 Block Hours Remaining (Column I):
-This value can go negative to indicate overage.
-If a client uses more hours than they have available, the remaining value will show a negative balance.
+This value will never go negative.
+If a client uses more hours than they have available, the extra usage is shown in the Uncovered Overage column.
 Formulas auto-fill from Row 2 whenever a new row is added via script.
