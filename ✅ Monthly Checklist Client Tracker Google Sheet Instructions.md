@@ -17,8 +17,7 @@ Purpose: Prepare your tracker, generate client support docs using Safe Mode, and
   * Ensure client time is accurately reflected for each client.   
 * Make a copy of the Master Tracker Sheet and save it as the month just past for future records. Use copy and paste and make sure to paste special values only. 
 
-* Update Block Hours  
- * In the Master Tracker, enter or update values in Column E (“Block Hours Available”) Paste them from Column I and use "paste values only" 
+* Update Block Hours - In the Master Tracker, enter or update values in Column E (“Block Hours Available”) Paste them from Column I and use "paste values only" 
 
 * Verify Client Statuses	In the Client Directory, confirm that:   
   * Active clients are marked as "Active" in Column D.   
