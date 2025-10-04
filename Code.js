@@ -76,13 +76,8 @@ if (status && ["inactive", "transitioning"].includes(status.toString().trim().to
     const body = doc.getBody();
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
     const image = body.appendImage(logoBlob);
-    const originalWidth = image.getWidth();
-    const originalHeight = image.getHeight();
-    const targetWidth = 250;
-    const aspectRatio = originalHeight / originalWidth;
-    const targetHeight = targetWidth * aspectRatio;
-
-image.setWidth(targetWidth).setHeight(targetHeight);
+    const aspectRatio = image.getHeight() / image.getWidth();
+    image.setWidth(150).setHeight(150 * aspectRatio); // smaller logo
 
 body.appendParagraph(`Hello ${firstName || ""},\n`);
 body.appendParagraph(""); // blank line
@@ -127,7 +122,101 @@ function getOrCreateClientFolder(parentFolder, clientName) {
   const folders = parentFolder.getFoldersByName(clientName);
   return folders.hasNext() ? folders.next() : parentFolder.createFolder(clientName);
 }
+/**
+ * monthlyRolloverAndCreateDocsSafe
+ *
+ * Safe mode version of the rollover script:
+ * - Ensures only one rolling row per client
+ * - Does NOT duplicate clients each month
+ * - Places docs into the correct client folder
+ */
+function monthlyRolloverAndCreateDocsSafe() {
+  const DRY_RUN = false; // set true if testing only
 
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  const masterSheet = ss.getSheetByName("Master Tracker");
+  const directorySheet = ss.getSheetByName("Client Directory");
+
+  const timeZone = ss.getSpreadsheetTimeZone();
+  const parentFolderId = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-';
+  const parentFolder = DriveApp.getFolderById(parentFolderId);
+  const today = new Date();
+  today.setMonth(today.getMonth() - 1);
+  const monthLabel = Utilities.formatDate(today, timeZone, "MMMM yyyy");
+  const timestamp = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
+
+  const summarySheet = ss.getSheetByName("Document Summary") || ss.insertSheet("Document Summary");
+  summarySheet.clear();
+  summarySheet.appendRow(["Client Name", "Email", "Doc URL", "Timestamp"]);
+
+  const data = masterSheet.getDataRange().getValues();
+  const rows = data.slice(1); // skip header
+  let createdCount = 0;
+
+  rows.forEach((row, i) => {
+    const rowNum = i + 2;
+    const [, clientName, planType, , , , , blockUsed, remainingBlock, uncoveredOverage, clientEmail, , firstName, , status, domainExpire, accessToGA] = row;
+
+    const trimmedName = typeof clientName === "string" ? clientName.trim() : "";
+    if (!trimmedName) return;
+
+    if (planType && planType.toString().trim().toLowerCase() === "hosting") return;
+    if (status && ["inactive", "transitioning"].includes(status.toString().trim().toLowerCase())) return;
+
+    const docName = `${monthLabel} - ${clientName}`;
+    const clientFolder = getOrCreateClientFolder(parentFolder, clientName);
+
+    // ✅ Safe mode: don’t duplicate docs, check if already exists
+    const existingFiles = clientFolder.getFilesByName(docName);
+    if (existingFiles.hasNext()) {
+      console.log(`⚠️ Skipping ${clientName} - doc already exists.`);
+      return;
+    }
+
+    if (DRY_RUN) {
+      console.log(`🟡 Dry run - would have created doc for ${clientName}`);
+      return;
+    }
+
+    // === Create document ===
+    const doc = DocumentApp.create(docName);
+    const body = doc.getBody();
+    const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
+    const image = body.appendImage(logoBlob);
+    const aspectRatio = image.getHeight() / image.getWidth();
+    image.setWidth(150).setHeight(150 * aspectRatio); // smaller logo
+
+    body.appendParagraph(`Hello ${firstName || ""},\n`);
+    body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
+    body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
+    body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
+    body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
+    body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
+
+    const formattedDomainExpire = domainExpire instanceof Date
+      ? Utilities.formatDate(domainExpire, timeZone, "MMM dd, yyyy")
+      : (domainExpire || "N/A");
+
+    body.appendParagraph("🔐 Domain Expiration: " + formattedDomainExpire);
+    body.appendParagraph("📊 Access to Google Analytics: " + (accessToGA || "N/A"));
+    body.appendParagraph("\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.");
+    doc.saveAndClose();
+
+    const file = DriveApp.getFileById(doc.getId());
+    file.moveTo(clientFolder);
+
+    const docUrl = doc.getUrl();
+    masterSheet.getRange(rowNum, 19).setFormula(`=HYPERLINK("${docUrl}", "Open Doc")`);
+    masterSheet.getRange(rowNum, 18).setFormula(`=HYPERLINK("${clientFolder.getUrl()}", "Open Folder")`);
+
+    summarySheet.appendRow([clientName, clientEmail || "N/A", docUrl, timestamp]);
+    console.log(`✅ Created support doc for ${clientName}`);
+    createdCount++;
+  });
+
+  ui.alert(`✅ ${createdCount} support summaries were created.`);
+}
 /**
  * updateMasterTrackerFormulas
  * Rewrites static formulas in F (Hours Used), H (Block Used), I (Remaining Block)
