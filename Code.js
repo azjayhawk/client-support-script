@@ -59,12 +59,16 @@ function monthlyRolloverAndCreateDocsSafe() {
     const existingFiles = clientFolder.getFilesByName(docName);
     while (existingFiles.hasNext()) {
       const candidate = existingFiles.next();
-      if (!candidate.isTrashed()) {  // ignore trashed files
+      if (candidate.isTrashed()) {
+        candidate.setTrashed(false); // restore trashed file
+        console.log(`♻️ Restored trashed doc for ${clientName}`);
+        activeFile = candidate;
+        break;
+      } else {
         activeFile = candidate;
         break;
       }
     }
-
     if (activeFile) {
       file = activeFile;
       doc = DocumentApp.openById(file.getId());
