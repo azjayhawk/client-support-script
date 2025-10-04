@@ -92,17 +92,12 @@ function monthlyRolloverAndCreateDocsSafe() {
     const body = doc.getBody();
     body.clear();
 
-    // Insert logo, preserve aspect ratio
+    // Insert logo, fixed size with locked aspect ratio
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
     const image = body.appendImage(logoBlob);
 
-    const originalWidth = image.getWidth();
-    const originalHeight = image.getHeight();
-    const targetWidth = 200; // adjust as needed
-    const aspectRatio = originalHeight / originalWidth;
-    const targetHeight = targetWidth * aspectRatio;
-
-    image.setWidth(targetWidth).setHeight(targetHeight);
+    // Set dimensions (in points) — 2in × 1.16in
+    image.setWidth(144).setHeight(83);
 
     body.appendParagraph(`Hello ${firstName || ""},`);
     body.appendParagraph(""); // blank line
