@@ -77,9 +77,8 @@ function monthlyRolloverAndCreateDocsSafe() {
       // ✅ Create a true Google Doc, then move it out of root into client folder
       doc = DocumentApp.create(docName);
       file = DriveApp.getFileById(doc.getId());
-      DriveApp.getRootFolder().removeFile(file);
-      clientFolder.addFile(file);
-      console.log(`🆕 Created new doc for ${clientName} in correct folder`);
+      file.moveTo(clientFolder); // single-parent move ensures it's not left in My Drive
+      console.log(`🆕 Created new doc for ${clientName} and moved to client folder`);
     }
 
     if (DRY_RUN) {
