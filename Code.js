@@ -165,12 +165,21 @@ function monthlyRolloverAndCreateDocsSafe() {
     const docName = `${monthLabel} - ${clientName}`;
     const clientFolder = getOrCreateClientFolder(parentFolder, clientName);
 
-    // ✅ Safe mode: reuse doc if it exists, otherwise create new
+    // ✅ Safe mode: reuse active doc if it exists, otherwise create new
     let doc;
     let file;
+    let activeFile = null;
     const existingFiles = clientFolder.getFilesByName(docName);
-    if (existingFiles.hasNext()) {
-      file = existingFiles.next();
+    while (existingFiles.hasNext()) {
+      const candidate = existingFiles.next();
+      if (!candidate.isTrashed()) {  // ignore trashed files
+        activeFile = candidate;
+        break;
+      }
+    }
+
+    if (activeFile) {
+      file = activeFile;
       doc = DocumentApp.openById(file.getId());
       console.log(`♻️ Reusing existing doc for ${clientName}`);
     } else {
@@ -189,8 +198,11 @@ function monthlyRolloverAndCreateDocsSafe() {
     body.clear();
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
     const image = body.appendImage(logoBlob);
-    const aspectRatio = image.getHeight() / image.getWidth();
-    image.setWidth(150).setHeight(150 * aspectRatio); // smaller logo
+    const originalWidth = image.getWidth();
+    const originalHeight = image.getHeight();
+    const targetWidth = 200; // set consistent width
+    const scaledHeight = Math.round((originalHeight / originalWidth) * targetWidth);
+    image.setWidth(targetWidth).setHeight(scaledHeight); // preserve aspect ratio
 
     body.appendParagraph(`Hello ${firstName || ""},\n`);
     body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
