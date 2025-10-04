@@ -105,11 +105,18 @@ function monthlyRolloverAndCreateDocsSafe() {
     image.setWidth(targetWidth).setHeight(targetHeight);
 
     body.appendParagraph(`Hello ${firstName || ""},`);
+    body.appendParagraph(""); // blank line
+
     body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:`);
+    body.appendParagraph(""); // blank line
+
     body.appendParagraph(`Hours Used from Support Block: ${blockUsed || 0}`);
     body.appendParagraph(`Block Hours Remaining: ${remainingBlock || 0}`);
     body.appendParagraph(`Overage Beyond Block: ${uncoveredOverage || 0}`);
-    body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
+    body.appendParagraph(""); // blank line
+
+    body.appendParagraph("If you need additional support hours, visit https://radiateu.com/request-support-time.");
+    body.appendParagraph(""); // blank line
 
     const formattedDomainExpire = domainExpire instanceof Date
       ? Utilities.formatDate(domainExpire, timeZone, "MMM dd, yyyy")
@@ -117,7 +124,12 @@ function monthlyRolloverAndCreateDocsSafe() {
 
     body.appendParagraph("🔐 Domain Expiration: " + formattedDomainExpire);
     body.appendParagraph("📊 Access to Google Analytics: " + (accessToGA || "N/A"));
-    body.appendParagraph("\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.");
+    body.appendParagraph(""); // blank line
+
+    body.appendParagraph("If you have any questions, feel free to reply here or send a message to support@radiateu.com.");
+    body.appendParagraph(""); // blank line
+    body.appendParagraph("Warm regards,");
+    body.appendParagraph("The RadiateU Team");
     doc.saveAndClose();
 
     // Update Master Tracker with links
