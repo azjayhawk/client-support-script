@@ -167,11 +167,19 @@ function monthlyRolloverAndCreateDocsSafe() {
     const docName = `${monthLabel} - ${clientName}`;
     const clientFolder = getOrCreateClientFolder(parentFolder, clientName);
 
-    // ✅ Safe mode: don’t duplicate docs, check if already exists
+    // ✅ Safe mode: reuse doc if it exists, otherwise create new
+    let doc;
+    let file;
     const existingFiles = clientFolder.getFilesByName(docName);
     if (existingFiles.hasNext()) {
-      console.log(`⚠️ Skipping ${clientName} - doc already exists.`);
-      return;
+      file = existingFiles.next();
+      doc = DocumentApp.openById(file.getId());
+      console.log(`♻️ Reusing existing doc for ${clientName}`);
+    } else {
+      doc = DocumentApp.create(docName);
+      file = DriveApp.getFileById(doc.getId());
+      file.moveTo(clientFolder);
+      console.log(`🆕 Created new doc for ${clientName}`);
     }
 
     if (DRY_RUN) {
@@ -179,9 +187,9 @@ function monthlyRolloverAndCreateDocsSafe() {
       return;
     }
 
-    // === Create document ===
-    const doc = DocumentApp.create(docName);
+    // === Create or refresh document content ===
     const body = doc.getBody();
+    body.clear();
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
     const image = body.appendImage(logoBlob);
     const aspectRatio = image.getHeight() / image.getWidth();
@@ -203,9 +211,7 @@ function monthlyRolloverAndCreateDocsSafe() {
     body.appendParagraph("\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.");
     doc.saveAndClose();
 
-    const file = DriveApp.getFileById(doc.getId());
-    file.moveTo(clientFolder);
-
+    // file has already been assigned and moved above
     const docUrl = doc.getUrl();
     masterSheet.getRange(rowNum, 19).setFormula(`=HYPERLINK("${docUrl}", "Open Doc")`);
     masterSheet.getRange(rowNum, 18).setFormula(`=HYPERLINK("${clientFolder.getUrl()}", "Open Folder")`);
