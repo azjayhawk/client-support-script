@@ -72,36 +72,34 @@ if (status && ["inactive", "transitioning"].includes(status.toString().trim().to
     }
 
     // === Create summary document ===
-    const doc = DocumentApp.create(docName);
+    const file = clientFolder.createFile(docName, "");
+    const doc = DocumentApp.openById(file.getId());
     const body = doc.getBody();
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
     const image = body.appendImage(logoBlob);
     const aspectRatio = image.getHeight() / image.getWidth();
     image.setWidth(150).setHeight(150 * aspectRatio); // smaller logo
 
-body.appendParagraph(`Hello ${firstName || ""},\n`);
-body.appendParagraph(""); // blank line
-body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
-body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
-body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
-body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
-body.appendParagraph(""); // blank line
-body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
-body.appendParagraph(""); // blank line
-body.appendParagraph("\nFor our clients on a monthly plan:");
+    body.appendParagraph(`Hello ${firstName || ""},\n`);
+    body.appendParagraph(""); // blank line
+    body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
+    body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
+    body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
+    body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
+    body.appendParagraph(""); // blank line
+    body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
+    body.appendParagraph(""); // blank line
+    body.appendParagraph("\nFor our clients on a monthly plan:");
 
-const formattedDomainExpire = domainExpire instanceof Date
-  ? Utilities.formatDate(domainExpire, timeZone, "MMM dd, yyyy")
-  : (domainExpire || "N/A");
+    const formattedDomainExpire = domainExpire instanceof Date
+      ? Utilities.formatDate(domainExpire, timeZone, "MMM dd, yyyy")
+      : (domainExpire || "N/A");
 
-
-body.appendParagraph("🔐 Domain Expiration: " + formattedDomainExpire);
+    body.appendParagraph("🔐 Domain Expiration: " + formattedDomainExpire);
     body.appendParagraph("📊 Access to Google Analytics: " + (accessToGA || "N/A"));
     body.appendParagraph("\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.");
     doc.saveAndClose();
 
-    const file = DriveApp.getFileById(doc.getId());
-    file.moveTo(clientFolder);
     const docUrl = doc.getUrl();
     const hyperlink = `=HYPERLINK("${docUrl}", "Open Doc")`;
     masterSheet.getRange(rowNum, 19).setFormula(hyperlink); // ✅ Column S (the 19th column)
@@ -176,9 +174,8 @@ function monthlyRolloverAndCreateDocsSafe() {
       doc = DocumentApp.openById(file.getId());
       console.log(`♻️ Reusing existing doc for ${clientName}`);
     } else {
-      doc = DocumentApp.create(docName);
-      file = DriveApp.getFileById(doc.getId());
-      file.moveTo(clientFolder);
+      file = clientFolder.createFile(docName, "");
+      doc = DocumentApp.openById(file.getId());
       console.log(`🆕 Created new doc for ${clientName}`);
     }
 
