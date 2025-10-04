@@ -92,16 +92,23 @@ function monthlyRolloverAndCreateDocsSafe() {
     const body = doc.getBody();
     body.clear();
 
-    // Insert logo, auto-scale to width
+    // Insert logo, preserve aspect ratio
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
     const image = body.appendImage(logoBlob);
-    image.setWidth(200); // let height auto-scale
 
-    body.appendParagraph(`Hello ${firstName || ""},\n`);
-    body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
-    body.appendParagraph(`Block Hours Applied: ${blockUsed || 0}`);
-    body.appendParagraph(`Remaining Block Balance: ${remainingBlock || 0}`);
-    body.appendParagraph(`Overage Hours (Uncovered): ${uncoveredOverage || 0}`);
+    const originalWidth = image.getWidth();
+    const originalHeight = image.getHeight();
+    const targetWidth = 200; // adjust as needed
+    const aspectRatio = originalHeight / originalWidth;
+    const targetHeight = targetWidth * aspectRatio;
+
+    image.setWidth(targetWidth).setHeight(targetHeight);
+
+    body.appendParagraph(`Hello ${firstName || ""},`);
+    body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:`);
+    body.appendParagraph(`Hours Used from Support Block: ${blockUsed || 0}`);
+    body.appendParagraph(`Block Hours Remaining: ${remainingBlock || 0}`);
+    body.appendParagraph(`Overage Beyond Block: ${uncoveredOverage || 0}`);
     body.appendParagraph("\nIf you need additional support hours, visit https://radiateu.com/request-support-time.");
 
     const formattedDomainExpire = domainExpire instanceof Date
