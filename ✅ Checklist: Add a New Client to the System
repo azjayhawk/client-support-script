@@ -1,4 +1,4 @@
-📘 Instructions: Using the Client Support Tracker
+<file name=0 path=/Users/carolstambaugh/Documents/GitHub/client-support-script/✅ Checklist: Add a New Client to the System>📘 Instructions: Using the Client Support Tracker
 
 ✅ How to Add a New Client
 Open the Tracker
@@ -28,6 +28,7 @@ The client is excluded from:
 Monthly doc generation
 Block hour syncing
 (Optional) You can hide their row in the Master Tracker to reduce visual clutter.
+• Safe Mode Automation (monthlyRolloverAndCreateDocsSafe) also skips inactive and transitioning clients automatically.
 
 🔄 How to Reactivate a Client
 In the Client Directory, find the client.
@@ -43,6 +44,8 @@ This value can go negative to indicate overage.
 If a client uses more hours than they have available, the remaining value will show a negative balance.
 Formulas auto-fill from Row 2 whenever a new row is added via script.
 
+⚠️ Reminder:
+The Client Directory is the single source of truth for all automation. Make sure client names, plan types, and statuses are accurate before running scripts.
 
-
-
+🧰 Best Practice:
+Always use the menu options under “Client Tools” to add or update clients. Avoid inserting or editing rows manually in the Master Tracker, as this can break formulas and automation links.

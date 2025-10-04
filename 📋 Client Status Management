@@ -1,26 +1,33 @@
+
+📋 Client Status Management (Updated — Safe Mode System)
+
 🔕 How to Make a Client Inactive
-Go to the Client Directory tab.
-Locate the client you want to deactivate.
-In Column D: Status, change the value to either:
-"Inactive" — if they are fully offboarded
-"Transitioning" — if they are wrapping up
+1. Go to the **Client Directory** tab.
+2. Locate the client you want to deactivate.
+3. In **Column D: Status**, change the value to either:
+   - **"Inactive"** — if they are fully offboarded.
+   - **"Transitioning"** — if they are wrapping up but still have access.
+
 ✅ What Happens Automatically
-The row remains in the Master Tracker for history and reporting.
-The client is excluded from:
-Monthly doc generation
-Block hour syncing
-(Optional) You can hide their row in the Master Tracker to reduce visual clutter.
+- The row remains in the **Master Tracker** for history and reporting.
+- The client is **skipped automatically** during:
+  - Monthly doc generation (`monthlyRolloverAndCreateDocsSafe`)
+  - Time Entry syncing (`ensureClientInTimeEntry_`)
+- You may **manually hide** their row in the Master Tracker to reduce visual clutter if desired.
 
 🔄 How to Reactivate a Client
-In the Client Directory, find the client.
-In Column D: Status, change it back to "Active".
-Run the menu item:
- Client Tools > ➕ Add New Client (again — it won’t duplicate).
+1. In the **Client Directory**, find the client.
+2. Change **Column D: Status** back to **"Active"**.
+3. Run:
+   - **Client Tools > 📋 Insert All Missing Clients to Master Tracker**
+   - *(Optional)* **Client Tools > 🔤 Sort Master Tracker A–Z**
 
- This will re-enable monthly doc sync if their row is still present (rows are never removed now).
+Once reactivated, the client will automatically be included again in:
+- Monthly doc generation (safe mode)
+- Time Entry tab sync
 
 🧮 Notes on Tracker Calculations
-Block Hours Remaining (Column I):
-This value will never go negative.
-If a client uses more hours than they have available, the extra usage is shown in the Uncovered Overage column.
-Formulas auto-fill from Row 2 whenever a new row is added via script.
+- **Block Hours Remaining (Column I):**
+  - This value is dynamically calculated.
+  - It will not go negative — overages are displayed in the **Uncovered Overage** column instead.
+- Formulas in the Master Tracker auto-fill from Row 2 whenever a new client row is added via script.

@@ -19,26 +19,26 @@ Purpose: Prepare your tracker, generate client support docs using Safe Mode, and
 
 * Bill Clients - Add any uncovered overage to clients in Stripe and note those purchases on the master tracker. 
 
-
 * Verify Client Statuses	In the Client Directory, confirm that:   
   * Active clients are marked as "Active" in Column D.   
   * Clients who should not receive reports are marked "Inactive" or "Transitioning".
 
 * Insert Any New Clients   
-  * Use the menu: Client Tools \> ➕ Add Client and Sync to Master Tracker.   
+  * Use the menu: ❤️ Client Tools > ➕ Add Client and Sync to Master Tracker.   
   * This ensures new clients are added to both sheets and properly formatted.   
 * Do NOT touch Column E (Block Hours Available) yet — changing it now will recalculate last month’s numbers.
 
 * (Optional) Unhide All Rows   
   * If you need to review all clients before processing:   
-  * Use: Client Tools \> 🫣 Unhide All Client Rows
+  * Use: ❤️ Client Tools > 🫣 Unhide All Client Rows
 
 ⸻
 
-🔹 RUN Monthly Script
+🔹 RUN Monthly Script (Safe Mode Only)
 
-* Run: Client Tools > [Safe Mode Script Button] Or manually run: monthlyRolloverAndCreateDocsSafe() from Apps Script.  
-* Safe Mode is the recommended process and maintains one rolling row per client to prevent duplicate document creation.
+* Run: 🛡️ Client Tools (Safe) > [Safe Mode Script Button]  
+* Or manually run: monthlyRolloverAndCreateDocsSafe() from Apps Script.  
+* Safe Mode is the only supported method and maintains one rolling row per client to prevent duplicate document creation.
 
 Script Will:
 
@@ -49,12 +49,13 @@ Script Will:
 * Hide the KEY and DOC_ID columns used for tracking internally  
 * Insert document links in Columns R and S (“Support Summary Link” and related) in the Master Tracker  
 * Prevent duplicate documents by updating existing ones rather than creating new files  
+* Automatically create client folders in Google Drive if missing
 
 ⸻
 
 🔹 AFTER Script Runs
 
-**• Advance Block Balances (carryover) — AFTER you’ve created/updated last month’s docs**  
+**• Advance Block Balances (carryover) — ONLY AFTER running Safe Mode script**  
   - Why after: Column E (Block Hours Available) is used by formulas for Block Hours Used/Remaining. If you change it before running the script, it will inflate/alter last month’s numbers.  
   - Action: Copy **I → E** (values only) for Active clients.  
     1) Select **I2:I** on Master Tracker and copy.  
@@ -62,13 +63,14 @@ Script Will:
     3) Spot-check a few rows to confirm E now equals the prior month’s remaining (I).
 
 * Review Output  
-* Check the Master Tracker to confirm:  
-  * All expected clients have updated links in Columns R and S  
-  * Docs were successfully created or updated  
-  * Spot check a few generated docs in client folders
+  * Check the Master Tracker to confirm:  
+    * All expected clients have updated links in Columns R and S  
+    * Docs were successfully created or updated  
+    * Client folders exist in Google Drive for each active client  
+    * Spot check a few generated docs in client folders to verify content
 
 * Hide Inactive Clients  
-  * Use: Client Tools > 🙈 Hide Inactive/Transitioning Rows  
+  * Use: ❤️ Client Tools > 🙈 Hide Inactive/Transitioning Rows  
   * This will hide all rows in the Master Tracker for non-active clients
 
 (Optional) Save/Archive the Month
@@ -79,10 +81,6 @@ Script Will:
 
 🧠 Notes  
 
-Client Folder Creation
-
-* The script automatically creates a Google Drive folder for each client (if not already present) under the parent folder.
-
-Hyperlink Placement
-
-* Doc links are inserted into Columns R and S.
+* All old scripts are deprecated. Please use only the Safe Mode script via 🛡️ Client Tools (Safe).  
+* Client Folder Creation is automatic in Safe Mode for any missing folders.  
+* Doc links are inserted into Columns R and S in the Master Tracker for easy access.
