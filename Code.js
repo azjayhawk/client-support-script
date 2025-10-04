@@ -487,7 +487,7 @@ function unhideAllClientRows() {
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('❤️ Client Tools')
-    .addItem('📄 Run Monthly Rollover + Create Docs (Safe)', 'monthlyRolloverAndCreateDocsSafe')
+    .addItem('📄 Run Monthly Rollover + Create Docs (Safe Mode)', 'monthlyRolloverAndCreateDocsSafe')
     .addSeparator()
     .addItem('➕ Add Client and Sync to Master Tracker', 'addNewClientToTracker')
     .addSeparator()
@@ -497,6 +497,8 @@ function onOpen() {
     .addSeparator()
     .addItem('🙈 Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
     .addItem('🫣 Unhide All Client Rows', 'unhideAllClientRows')
+    .addSeparator()
+    .addItem('🧹 Dedupe by Client (Safe Mode)', 'dedupeByClientKeepFirst_')
     .addToUi();
 }
 // Time Entry sheet settings (GLOBAL)
