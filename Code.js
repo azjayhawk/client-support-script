@@ -74,9 +74,12 @@ function monthlyRolloverAndCreateDocsSafe() {
       doc = DocumentApp.openById(file.getId());
       console.log(`♻️ Reusing existing doc for ${clientName}`);
     } else {
-      file = clientFolder.createFile(docName, "");
-      doc = DocumentApp.openById(file.getId());
-      console.log(`🆕 Created new doc for ${clientName}`);
+      // ✅ Create a true Google Doc, then move it out of root into client folder
+      doc = DocumentApp.create(docName);
+      file = DriveApp.getFileById(doc.getId());
+      DriveApp.getRootFolder().removeFile(file);
+      clientFolder.addFile(file);
+      console.log(`🆕 Created new doc for ${clientName} in correct folder`);
     }
 
     if (DRY_RUN) {
