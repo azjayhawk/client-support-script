@@ -226,7 +226,7 @@ function monthlyRolloverAndCreateDocsSafe() {
         ? DocumentApp.openById(existing.getId())
         : DocumentApp.create(docName);
     }
-
+ 
     ensureAndFillMonthlyDocFast_(doc, row, monthLabel, clientName);
     const docUrl = doc.getUrl();
 
@@ -234,5 +234,16 @@ function monthlyRolloverAndCreateDocsSafe() {
     sheet.getRange(i + FIRST_DATA_ROW_IDX, REPORT_DOC_COL).setFormula(`=HYPERLINK("${docUrl}", "📄 Summary")`);
     sheet.getRange(i + FIRST_DATA_ROW_IDX, keyColIdx).setValue(key);
     sheet.getRange(i + FIRST_DATA_ROW_IDX, docIdColIdx).setValue(doc.getId());
+  }
+}
+
+// Test function to confirm the parent folder ID is pointing to the right folder
+function testParentFolder() {
+  try {
+    const folder = DriveApp.getFolderById(PARENT_FOLDER_ID);
+    console.log("✅ Parent Folder Name:", folder.getName());
+    console.log("📂 Parent Folder URL:", folder.getUrl());
+  } catch (e) {
+    console.error("❌ Error accessing parent folder:", e.message);
   }
 }

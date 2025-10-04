@@ -73,15 +73,14 @@ function monthlyRolloverAndCreateDocsSafe() {
       doc = DocumentApp.openById(file.getId());
       console.log(`♻️ Reusing existing doc for ${clientName}`);
     } else {
-      // === Create file directly inside client folder (NO My Drive) ===
-      const resource = {
-        title: docName,
-        mimeType: MimeType.GOOGLE_DOCS,
-        parents: [{ id: clientFolder.getId() }]
-      };
-      file = Drive.Files.insert(resource);
-      doc = DocumentApp.openById(file.id);
-      console.log(`🆕 Created new doc for ${clientName} inside client folder`);
+      // === Create file in My Drive, then move it into client folder ===
+      doc = DocumentApp.create(docName);
+      file = DriveApp.getFileById(doc.getId());
+      file = Drive.Files.update(
+        { parents: [{ id: clientFolder.getId() }] },
+        file.getId()
+      );
+      console.log(`🆕 Created and moved new doc for ${clientName} into client folder`);
     }
 
     if (DRY_RUN) {
