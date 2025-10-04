@@ -10,10 +10,10 @@ function getOrCreateClientFolder(parentFolder, clientName) {
 /**
  * monthlyRolloverAndCreateDocsSafe
  *
- * Safe mode version of the rollover script:
- * - Ensures only one rolling row per client
- * - Does NOT duplicate clients each month
- * - Places docs into the correct client folder
+ * Creates monthly support summary docs in the correct client folder.
+ * - Docs are created directly inside the folder (no "moveTo", no trash).
+ * - Reuses existing docs if already present.
+ * - Logo is inserted with proper scaling.
  */
 function monthlyRolloverAndCreateDocsSafe() {
   const DRY_RUN = false; // set true if testing only
@@ -21,16 +21,19 @@ function monthlyRolloverAndCreateDocsSafe() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
   const masterSheet = ss.getSheetByName("Master Tracker");
-  const directorySheet = ss.getSheetByName("Client Directory");
-
   const timeZone = ss.getSpreadsheetTimeZone();
+
+  // Parent folder that contains all client folders
   const parentFolderId = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-';
   const parentFolder = DriveApp.getFolderById(parentFolderId);
+
+  // Month label (previous month)
   const today = new Date();
   today.setMonth(today.getMonth() - 1);
   const monthLabel = Utilities.formatDate(today, timeZone, "MMMM yyyy");
   const timestamp = Utilities.formatDate(new Date(), timeZone, "yyyy-MM-dd HH:mm:ss");
 
+  // Summary sheet
   const summarySheet = ss.getSheetByName("Document Summary") || ss.insertSheet("Document Summary");
   summarySheet.clear();
   summarySheet.appendRow(["Client Name", "Email", "Doc URL", "Timestamp"]);
@@ -52,33 +55,33 @@ function monthlyRolloverAndCreateDocsSafe() {
     const docName = `${monthLabel} - ${clientName}`;
     const clientFolder = getOrCreateClientFolder(parentFolder, clientName);
 
-    // ✅ Safe mode: reuse active doc if it exists, otherwise create new
-    let doc;
+    // === Check if file already exists ===
     let file;
-    let activeFile = null;
+    let doc;
     const existingFiles = clientFolder.getFilesByName(docName);
     while (existingFiles.hasNext()) {
       const candidate = existingFiles.next();
       if (candidate.isTrashed()) {
-        candidate.setTrashed(false); // restore trashed file
+        candidate.setTrashed(false);
         console.log(`♻️ Restored trashed doc for ${clientName}`);
-        activeFile = candidate;
-        break;
-      } else {
-        activeFile = candidate;
-        break;
       }
+      file = candidate;
+      break;
     }
-    if (activeFile) {
-      file = activeFile;
+
+    if (file) {
       doc = DocumentApp.openById(file.getId());
       console.log(`♻️ Reusing existing doc for ${clientName}`);
     } else {
-      // ✅ Create a true Google Doc, then move it out of root into client folder
-      doc = DocumentApp.create(docName);
-      file = DriveApp.getFileById(doc.getId());
-      file.moveTo(clientFolder); // single-parent move ensures it's not left in My Drive
-      console.log(`🆕 Created new doc for ${clientName} and moved to client folder`);
+      // === Create file directly inside client folder (NO My Drive) ===
+      const resource = {
+        title: docName,
+        mimeType: MimeType.GOOGLE_DOCS,
+        parents: [{ id: clientFolder.getId() }]
+      };
+      file = Drive.Files.insert(resource);
+      doc = DocumentApp.openById(file.id);
+      console.log(`🆕 Created new doc for ${clientName} inside client folder`);
     }
 
     if (DRY_RUN) {
@@ -86,16 +89,14 @@ function monthlyRolloverAndCreateDocsSafe() {
       return;
     }
 
-    // === Create or refresh document content ===
+    // === Write document content ===
     const body = doc.getBody();
     body.clear();
+
+    // Insert logo, auto-scale to width
     const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
     const image = body.appendImage(logoBlob);
-    const originalWidth = image.getWidth();
-    const originalHeight = image.getHeight();
-    const targetWidth = 200; // set consistent width
-    const scaledHeight = Math.round((originalHeight / originalWidth) * targetWidth);
-    image.setWidth(targetWidth).setHeight(scaledHeight); // preserve aspect ratio
+    image.setWidth(200); // let height auto-scale
 
     body.appendParagraph(`Hello ${firstName || ""},\n`);
     body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:\n`);
@@ -113,7 +114,7 @@ function monthlyRolloverAndCreateDocsSafe() {
     body.appendParagraph("\nIf you have any questions, feel free to reply here or send a message to support@radiateu.com.");
     doc.saveAndClose();
 
-    // file has already been assigned and moved above
+    // Update Master Tracker with links
     const docUrl = doc.getUrl();
     masterSheet.getRange(rowNum, 19).setFormula(`=HYPERLINK("${docUrl}", "Open Doc")`);
     masterSheet.getRange(rowNum, 18).setFormula(`=HYPERLINK("${clientFolder.getUrl()}", "Open Folder")`);
