@@ -105,9 +105,11 @@ function monthlyRolloverAndCreateDocsSafe() {
     body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:`);
     body.appendParagraph(""); // blank line
 
-    body.appendParagraph(`Hours Used from Support Block: ${blockUsed || 0}`);
-    body.appendParagraph(`Block Hours Remaining: ${remainingBlock || 0}`);
-    body.appendParagraph(`Overage Beyond Block: ${uncoveredOverage || 0}`);
+    const fmt = v => (typeof v === "number" ? v.toFixed(2) : v || "0");
+
+    body.appendParagraph(`Hours Used from Support Block: ${fmt(blockUsed)}`);
+    body.appendParagraph(`Block Hours Remaining: ${fmt(remainingBlock)}`);
+    body.appendParagraph(`Overage Beyond Block: ${fmt(uncoveredOverage)}`);
     body.appendParagraph(""); // blank line
 
     body.appendParagraph("If you need additional support hours, visit https://radiateu.com/request-support-time.");
