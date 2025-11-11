@@ -48,7 +48,8 @@ masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 1).setValue(monthLabel)
 
   rows.forEach((row, i) => {
     const rowNum = i + 2;
-    const [, clientName, planType, , , , , blockUsed, remainingBlock, uncoveredOverage, clientEmail, , firstName, , status, domainExpire, accessToGA] = row;
+    // Includes new "Hours Purchased This Month" from Column L (index 11)
+    const [, clientName, planType, , , , , blockUsed, remainingBlock, uncoveredOverage, clientEmail, , hoursPurchased, firstName, , status, domainExpire, accessToGA] = row;
 
     const trimmedName = typeof clientName === "string" ? clientName.trim() : "";
     if (!trimmedName) return;
@@ -112,6 +113,7 @@ masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 1).setValue(monthLabel)
     const fmt = v => (typeof v === "number" ? v.toFixed(2) : v || "0");
 
     body.appendParagraph(`Hours Used from Support Block: ${fmt(blockUsed)}`);
+    body.appendParagraph(`Hours Purchased This Month: ${fmt(hoursPurchased)}`);
     body.appendParagraph(`Block Hours Remaining: ${fmt(remainingBlock)}`);
     body.appendParagraph(`Overage Beyond Block: ${fmt(uncoveredOverage)}`);
     body.appendParagraph(""); // blank line
