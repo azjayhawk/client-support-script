@@ -1,4 +1,4 @@
-<file name=0 path=/Users/carolstambaugh/Documents/GitHub/client-support-script/✅ Checklist: Add a New Client to the System>📘 Instructions: Using the Client Support Tracker
+📘 Instructions: Using the Client Support Tracker
 
 ✅ How to Add a New Client
 Open the Tracker
@@ -49,3 +49,10 @@ The Client Directory is the single source of truth for all automation. Make sure
 
 🧰 Best Practice:
 Always use the menu options under “Client Tools” to add or update clients. Avoid inserting or editing rows manually in the Master Tracker, as this can break formulas and automation links.
+
+🕓 If the New Client Purchased Support Hours
+1. Enter the purchased block hours in the appropriate column in the Master Tracker.
+2. Ensure the block hours are correctly reflected in the Block Hours Remaining column.
+3. Confirm that formulas auto-fill correctly and the client’s block hour balance updates.
+4. Verify that monthly doc generation and block hour syncing include the new block hours.
+5. Open the **Block History** tab and record the new support block purchase there as well. This keeps historical records consistent and ensures proper tracking of all purchased blocks.

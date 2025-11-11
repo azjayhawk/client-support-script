@@ -17,7 +17,8 @@ Purpose: Prepare your tracker, generate client support docs using Safe Mode, and
   * Ensure client time is accurately reflected for each client.   
 * Make a copy of the Master Tracker Sheet and save it as the month just past for future records. Use copy and paste and make sure to paste special values only. 
 
-* Bill Clients - Add any uncovered overage to clients in Stripe and note those purchases on the master tracker. 
+* Bill Clients - Add any uncovered overage to clients in Stripe. Help Doc - https://docs.radiateu.com/docs/support-and-or-one-time-payment-to-stripe/
+* Note those purchases on the master tracker and in the block history tab. 
 
 * Verify Client Statuses	In the Client Directory, confirm that:   
   * Active clients are marked as "Active" in Column D.   
@@ -50,6 +51,7 @@ Script Will:
 * Insert document links in Columns R and S (“Support Summary Link” and related) in the Master Tracker  
 * Prevent duplicate documents by updating existing ones rather than creating new files  
 * Automatically create client folders in Google Drive if missing
+* Include new “Hours Purchased This Month” value from the Master Tracker (Column L) in each client’s support summary.
 
 ⸻
 
@@ -68,6 +70,7 @@ Script Will:
     * Docs were successfully created or updated  
     * Client folders exist in Google Drive for each active client  
     * Spot check a few generated docs in client folders to verify content
+    * Generated documents now include: Hours Used, Hours Purchased This Month, Block Hours Remaining, and Overage Beyond Block.
 
 * Hide Inactive Clients  
   * Use: ❤️ Client Tools > 🙈 Hide Inactive/Transitioning Rows  
@@ -84,3 +87,4 @@ Script Will:
 * All old scripts are deprecated. Please use only the Safe Mode script via 🛡️ Client Tools (Safe).  
 * Client Folder Creation is automatic in Safe Mode for any missing folders.  
 * Doc links are inserted into Columns R and S in the Master Tracker for easy access.
+* “Hours Purchased This Month” is now pulled from Column L in the Master Tracker. This reflects additional support hours purchased during the billing period.
