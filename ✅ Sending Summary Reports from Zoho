@@ -1,0 +1,86 @@
+Sending Summary Reports from Zoho
+
+✅ Monthly Support Summary Email Checklist
+
+Using Zoho Mail Merge to Send RadiateU Monthly Support Reports
+
+⸻
+
+🗓️ Step 1: Access the RadiateU Support Email 
+Log in to support@radiateu.com in Zoho Mail. 
+In the right sidebar, click the plug icon ⚡ labeled “Toggle E Widget.”
+From the dropdown list, select Mail Merge.
+
+⸻
+
+🧩 Step 2: Select the Monthly Template 
+When the Mail Merge window opens, it will prompt you to choose a template. 
+Select “RadiateU Monthly Support Hours Report.” 
+This is the prebuilt Zoho Docs email template for monthly summaries. 
+It includes merge tags such as {{Client Name}}, {{Hours Used}}, and {{Month}}.
+
+⸻
+
+📄 Step 3: Prepare the Monthly Data (CSV File)
+
+Since RadiateU doesn’t use Zoho Sheets, you’ll import your data as a CSV file. 
+In the New Monthly Support Tracker (Google Sheet): 
+Locate the archived Master Tracker tab for the most recent month. Example: “October 2025 Master Tracker (Archive)” 
+Do not use the live “Master Tracker” tab — use the archived, values-only version. 
+Export this archived tab as a CSV file: File → Download → Comma-separated values (.csv) 
+Open the CSV in your spreadsheet editor (Excel, Google Sheets, etc.) for cleanup.
+
+⸻
+
+🧹 Step 4: Clean and Verify the Data
+
+Before uploading to Zoho, review the CSV carefully: 
+Delete any rows for clients who: 
+Did not use support hours and 
+Have no remaining block hours available. 
+Keep clients who: 
+Used any plan or support block hours, or 
+Have block hours available (even if unused). 
+Verify the following fields: 
+Hours Purchased This Month — confirm it includes any billed overage time or purchased support blocks. 
+Double-check totals for a few clients to ensure the data exported correctly.
+
+⸻
+
+📤 Step 5: Upload the CSV into Zoho Mail Merge 
+Return to the Zoho Mail Merge window. 
+When prompted for a data source, select Upload CSV. 
+Choose the cleaned CSV file you just prepared.
+
+⸻
+
+👀 Step 6: Preview and Validate the Merge 
+Once uploaded, you’ll see a preview screen showing a sample of each personalized email. 
+Use the dropdown in the preview area to review multiple recipients. 
+Spot-check at least a few: 
+Clients with purchased blocks 
+Clients with remaining balances 
+Clients with used plan hours 
+If you need to tweak the wording or layout, click Edit Template to make updates.
+
+⸻
+
+✉️ Step 7: Send the Monthly Summaries 
+After previewing and confirming all details: 
+Click Send to begin the Mail Merge. 
+Emails will send directly from support@radiateu.com. 
+Monitor the “Sent” folder to confirm successful delivery.
+
+⸻
+
+🧾 Optional: Post-Send Checks Save your final CSV in the monthly documentation folder for recordkeeping. 
+Note any clients who purchased new blocks for next month’s Block History tab update.
+
+⸻
+
+💡
+
+ Pro Tip:
+
+To make next month’s merge faster, keep a copy of your cleaned CSV as a reference — it helps you remember who received the prior month’s summaries and who might need manual inclusion next time.
+
