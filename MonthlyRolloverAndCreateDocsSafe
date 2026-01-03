@@ -1,3 +1,29 @@
+/************************************
+ * RadiateU — Client Support Tracker (2026)
+ * Combined Script (Clean Drop-in)
+ *
+ * IMPORTANT (Drive API):
+ * This script uses Drive.Files.update() to place newly-created docs into the client folder.
+ * To avoid errors, enable BOTH:
+ * 1) Apps Script → Services → Advanced Google services… → Drive API (ON)
+ * 2) Google Cloud Console → APIs & Services → Library → Google Drive API (ENABLED)
+ ************************************/
+
+/**
+ * CONFIG
+ */
+const MASTER_SHEET_NAME = "Master Tracker 2026";
+const DIRECTORY_SHEET_NAME = "Client Directory";
+const TIME_ENTRY_SHEET = "Time Entry";
+
+// Change if your Time Entry template row is different:
+const TIME_ENTRY_TEMPLATE_ROW = 3;
+
+// Parent folder that contains all client folders:
+const PARENT_FOLDER_ID = "1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-";
+
+// Your logo file ID (Drive):
+const LOGO_FILE_ID = "1fW300SGxEFVFvndaLkkWz3_O7L3BOq84";
 
 /**
  * getOrCreateClientFolder
@@ -7,25 +33,39 @@ function getOrCreateClientFolder(parentFolder, clientName) {
   const folders = parentFolder.getFoldersByName(clientName);
   return folders.hasNext() ? folders.next() : parentFolder.createFolder(clientName);
 }
+
 /**
  * monthlyRolloverAndCreateDocsSafe
- *
  * Creates monthly support summary docs in the correct client folder.
- * - Docs are created directly inside the folder (no "moveTo", no trash).
- * - Reuses existing docs if already present.
- * - Logo is inserted with proper scaling.
+ *
+ * Assumes Master Tracker 2026 headers:
+ * A Month
+ * B Client Name
+ * C Status
+ * D Block Hours Starting Balance
+ * E Hours Used (This Month)
+ * F Block Hours Remaining (formula)
+ * G Hours Purchased This Month
+ * H Block Balance End of Month (formula)
+ * K Client Email
+ * L First Name
+ * N Domain Expiration
+ * O Access to GA
+ * P Report Folder URL
+ * Q Monthly Support Doc Link
  */
 function monthlyRolloverAndCreateDocsSafe() {
-  const DRY_RUN = false; // set true if testing only
+  const DRY_RUN = false; // set true if testing only (won't write docs)
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
-  const masterSheet = ss.getSheetByName("Master Tracker 2026");
+  const masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet) throw new Error(`Sheet "${MASTER_SHEET_NAME}" not found.`);
+
   const timeZone = ss.getSpreadsheetTimeZone();
 
   // Parent folder that contains all client folders
-  const parentFolderId = '1UI4zQ_YIEWWJT0kSP2x8EaQlue303Xl-';
-  const parentFolder = DriveApp.getFolderById(parentFolderId);
+  const parentFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
 
   // Month label (previous month)
   const today = new Date();
@@ -35,34 +75,53 @@ function monthlyRolloverAndCreateDocsSafe() {
 
   // Summary sheet
   const summarySheet = ss.getSheetByName("Document Summary") || ss.insertSheet("Document Summary");
-summarySheet.clear();
-summarySheet.appendRow(["Client Name", "Email", "Doc URL", "Timestamp"]);
-
-// === Write Month Label in Column A of Master Tracker 2026 ===
-masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 1).setValue(monthLabel);
+  summarySheet.clear();
   summarySheet.appendRow(["Client Name", "Email", "Doc URL", "Timestamp"]);
 
+  // Write Month Label in Column A (starting Row 3)
+  const lastRow = masterSheet.getLastRow();
+  if (lastRow > 2) {
+    masterSheet.getRange(3, 1, lastRow - 2, 1).setValue(monthLabel);
+  }
+
+  // Read all rows once
   const data = masterSheet.getDataRange().getValues();
-  const rows = data.slice(1); // skip header
+
+  // Skip header row (row 1) + template row (row 2)
+  const rows = data.slice(2);
+
   let createdCount = 0;
 
   rows.forEach((row, i) => {
-    const rowNum = i + 2;
-    const [, clientName, planType, , , , , blockUsed, remainingBlock, uncoveredOverage, clientEmail, , firstName, , status, domainExpire, accessToGA] = row;
+    const rowNum = i + 3; // rows[0] corresponds to sheet row 3
 
-    const trimmedName = typeof clientName === "string" ? clientName.trim() : "";
+    const clientName     = row[1];  // B
+    const status         = row[2];  // C
+    const startingBlock  = row[3];  // D
+    const hoursUsed      = row[4];  // E
+    // F is formula; we do not need it for doc content
+    const hoursPurchased = row[6];  // G
+    const endBalance     = row[7];  // H
+    const clientEmail    = row[10]; // K
+    const firstName      = row[11]; // L
+    const domainExpire   = row[13]; // N
+    const accessToGA     = row[14]; // O
+
+    const trimmedName = (typeof clientName === "string") ? clientName.trim() : "";
     if (!trimmedName) return;
 
-    if (planType && planType.toString().trim().toLowerCase() === "hosting") return;
-    if (status && ["inactive", "transitioning"].includes(status.toString().trim().toLowerCase())) return;
+    // Skip inactive / transitioning
+    const st = (status || "").toString().trim().toLowerCase();
+    if (st === "inactive" || st === "transitioning") return;
 
     const docName = `${monthLabel} - ${clientName}`;
     const clientFolder = getOrCreateClientFolder(parentFolder, clientName);
 
-    // === Check if file already exists ===
+    // Check if doc already exists in the client folder
     let file;
     let doc;
     const existingFiles = clientFolder.getFilesByName(docName);
+
     while (existingFiles.hasNext()) {
       const candidate = existingFiles.next();
       if (candidate.isTrashed()) {
@@ -77,47 +136,52 @@ masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 1).setValue(monthLabel)
       doc = DocumentApp.openById(file.getId());
       console.log(`♻️ Reusing existing doc for ${clientName}`);
     } else {
-      // === Create file in My Drive, then move it into client folder ===
+      // Create doc then assign it to the client folder via Drive API
       doc = DocumentApp.create(docName);
-      file = DriveApp.getFileById(doc.getId());
-      file = Drive.Files.update(
+
+      if (DRY_RUN) {
+        console.log(`🟡 Dry run - would have created doc for ${clientName}`);
+        return;
+      }
+
+      const createdFile = DriveApp.getFileById(doc.getId());
+
+      // Move into client folder via Drive API (no "moveTo", avoids trashing)
+      Drive.Files.update(
         { parents: [{ id: clientFolder.getId() }] },
-        file.getId()
+        createdFile.getId()
       );
-      console.log(`🆕 Created and moved new doc for ${clientName} into client folder`);
+
+      console.log(`🆕 Created new doc for ${clientName} in client folder`);
     }
 
-    if (DRY_RUN) {
-      console.log(`🟡 Dry run - would have created doc for ${clientName}`);
-      return;
-    }
+    if (DRY_RUN) return;
 
-    // === Write document content ===
+    // Write document content
     const body = doc.getBody();
     body.clear();
 
-    // Insert logo, fixed size with locked aspect ratio
-    const logoBlob = DriveApp.getFileById("1fW300SGxEFVFvndaLkkWz3_O7L3BOq84").getBlob();
+    // Insert logo
+    const logoBlob = DriveApp.getFileById(LOGO_FILE_ID).getBlob();
     const image = body.appendImage(logoBlob);
-
-    // Set dimensions (in points) — 2in × 1.16in
-    image.setWidth(144).setHeight(83);
+    image.setWidth(144).setHeight(83); // 2in × ~1.16in
 
     body.appendParagraph(`Hello ${firstName || ""},`);
-    body.appendParagraph(""); // blank line
+    body.appendParagraph("");
 
     body.appendParagraph(`Here’s your monthly support summary for ${clientName} – ${monthLabel}:`);
-    body.appendParagraph(""); // blank line
+    body.appendParagraph("");
 
-    const fmt = v => (typeof v === "number" ? v.toFixed(2) : v || "0");
+    const fmt = v => (typeof v === "number" ? v.toFixed(2) : (v || "0"));
 
-    body.appendParagraph(`Hours Used from Support Block: ${fmt(blockUsed)}`);
-    body.appendParagraph(`Block Hours Remaining: ${fmt(remainingBlock)}`);
-    body.appendParagraph(`Overage Beyond Block: ${fmt(uncoveredOverage)}`);
-    body.appendParagraph(""); // blank line
+    body.appendParagraph(`Block Hours Starting Balance: ${fmt(startingBlock)}`);
+    body.appendParagraph(`Hours Used This Month: ${fmt(hoursUsed)}`);
+    body.appendParagraph(`Hours Purchased This Month: ${fmt(hoursPurchased)}`);
+    body.appendParagraph(`Block Balance End of Month: ${fmt(endBalance)}`);
+    body.appendParagraph("");
 
     body.appendParagraph("If you need additional support hours, visit https://radiateu.com/request-support-time.");
-    body.appendParagraph(""); // blank line
+    body.appendParagraph("");
 
     const formattedDomainExpire = domainExpire instanceof Date
       ? Utilities.formatDate(domainExpire, timeZone, "MMM dd, yyyy")
@@ -125,117 +189,76 @@ masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 1).setValue(monthLabel)
 
     body.appendParagraph("🔐 Domain Expiration: " + formattedDomainExpire);
     body.appendParagraph("📊 Access to Google Analytics: " + (accessToGA || "N/A"));
-    body.appendParagraph(""); // blank line
+    body.appendParagraph("");
 
     body.appendParagraph("If you have any questions, feel free to reply here or send a message to support@radiateu.com.");
-    body.appendParagraph(""); // blank line
+    body.appendParagraph("");
     body.appendParagraph("Warm regards,");
     body.appendParagraph("The RadiateU Team");
+
     doc.saveAndClose();
 
-    // Update Master Tracker 2026 with links
+    // Update Master Tracker links (P/Q)
     const docUrl = doc.getUrl();
-    masterSheet.getRange(rowNum, 19).setFormula(`=HYPERLINK("${docUrl}", "Open Doc")`);
-    masterSheet.getRange(rowNum, 18).setFormula(`=HYPERLINK("${clientFolder.getUrl()}", "Open Folder")`);
+    masterSheet.getRange(rowNum, 17).setFormula(`=HYPERLINK("${docUrl}", "Open Doc")`); // Q
+    masterSheet.getRange(rowNum, 16).setFormula(`=HYPERLINK("${clientFolder.getUrl()}", "Open Folder")`); // P
 
     summarySheet.appendRow([clientName, clientEmail || "N/A", docUrl, timestamp]);
-    console.log(`✅ Created support doc for ${clientName}`);
     createdCount++;
+    console.log(`✅ Created support doc for ${clientName}`);
   });
 
   ui.alert(`✅ ${createdCount} support summaries were created.`);
 }
-/**
- * updateMasterTrackerFormulas
- * Rewrites static formulas in F (Hours Used), H (Block Used), I (Remaining Block)
- * and L–Q (Client Directory lookups), using FILTER-based VLOOKUP to ensure only Active clients are referenced.
- */
-function updateMasterTrackerFormulas() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const trackerSheet = ss.getSheetByName("Master Tracker 2026");
-  const startRow = 2;
-  const lastRow = trackerSheet.getLastRow();
-  const clientNames = trackerSheet.getRange(startRow, 2, lastRow - 1, 1).getValues();
-  if (clientNames.length === 0) return;
-
-  // === F, H, I columns ===
-  const colF = [], colH = [], colI = [];
-  for (let i = 0; i < clientNames.length; i++) {
-    const row = i + startRow;
-    const b = clientNames[i][0];
-    if (!b) {
-      colF.push([""]); colH.push([""]); colI.push([""]); continue;
-    }
-    // Uses Time Entry column O (15th) rather than L (12th)
-    colF.push([`=IF(B${row}="", "", IFERROR(VLOOKUP(B${row}, 'Time Entry'!A:O, 15, FALSE), 0))`]);
-    colH.push([`=IF(F${row}=0, 0, IF(F${row}<=D${row}, 0, IF(E${row}<=0, F${row}-D${row}, MIN(F${row}-D${row}, E${row}))))`]);
-    colI.push([`=MAX(E${row} - H${row}, 0)`]);
-  }
-  trackerSheet.getRange(startRow, 6, colF.length, 1).setFormulas(colF); // F
-  trackerSheet.getRange(startRow, 8, colH.length, 1).setFormulas(colH); // H
-  trackerSheet.getRange(startRow, 9, colI.length, 1).setFormulas(colI); // I
-
-  // === L–Q using FILTER-based VLOOKUP (Active-only from Client Directory) ===
-  const mToS = {
-    L: { col: 12, index: 3 },  // Support Summary Link
-    M: { col: 13, index: 7 },  // First Name
-    N: { col: 14, index: 8 },  // Last Name
-    O: { col: 15, index: 4 },  // Status
-    P: { col: 16, index: 9 },  // Domain Expire
-    Q: { col: 17, index: 10 }, // Access to GA
-  };
-
-  Object.entries(mToS).forEach(([_, cfg]) => {
-    const output = [];
-    for (let i = 0; i < clientNames.length; i++) {
-      const row = i + startRow;
-      const b = clientNames[i][0];
-      if (!b) { output.push([""]); continue; }
-      const formula = `=IF(B${row}="", "", IFERROR(VLOOKUP(TO_TEXT(B${row}), FILTER('Client Directory'!A:J, 'Client Directory'!D:D = "Active"), ${cfg.index}, FALSE), ""))`;
-      output.push([formula]);
-    }
-    trackerSheet.getRange(startRow, cfg.col, output.length, 1).setFormulas(output);
-  });
-
-  SpreadsheetApp.getUi().alert("✅ Formulas updated in Columns F, H, I, and L–Q.");
-}
 
 /**
- * PURPOSE:
- * Inserts all clients from the Client Directory into the Master Tracker 2026
- * if they are not already present. Preserves row order and copies formulas
- * from the template row (Row 2) to ensure consistency.
+ * insertAllMissingClients
+ * Inserts all clients from Client Directory into Master Tracker 2026 if missing.
  *
- * Assumptions:
- * - Client Directory: client name in Column A, plan type in B, monthly hours in C, status in D, email in E, first name in F, last name in G
- * - Master Tracker 2026: client name in Column B (index 2)
- * - Template row is Row 2 in Master Tracker 2026 (row with correct formulas)
+ * Master Tracker assumptions:
+ * - Template row is Row 2
+ * - Data starts at Row 3
+ *
+ * Writes:
+ * B Client Name  <- dir A
+ * C Status       <- dir D
+ * K Client Email <- dir C
+ * L First Name   <- dir F
+ * M Last Name    <- dir G
+ *
+ * Clears:
+ * P Report Folder URL
+ * Q Monthly Support Doc Link
  */
-
 function insertAllMissingClients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
-  const directorySheet = ss.getSheetByName('Client Directory');
-  const masterSheet = ss.getSheetByName('Master Tracker 2026');
+  const directorySheet = ss.getSheetByName(DIRECTORY_SHEET_NAME);
+  const masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+
+  if (!directorySheet) throw new Error(`Sheet "${DIRECTORY_SHEET_NAME}" not found.`);
+  if (!masterSheet) throw new Error(`Sheet "${MASTER_SHEET_NAME}" not found.`);
 
   const dirData = directorySheet.getDataRange().getValues();
-  const masterData = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues(); // Column B = Client Name
 
-  const masterClientNames = masterData.map(row => row[0].toString().trim().toLowerCase());
+  // Existing client names in Master Tracker (Column B), starting Row 3
+  const lastMasterRow = masterSheet.getLastRow();
+  const existing = (lastMasterRow >= 3)
+    ? masterSheet.getRange(3, 2, lastMasterRow - 2, 1).getValues()
+        .map(r => (r[0] || "").toString().trim().toLowerCase())
+    : [];
+
   const newClients = [];
-
-  for (let i = 1; i < dirData.length; i++) {
-    const name = dirData[i][0];
+  for (let i = 1; i < dirData.length; i++) { // skip directory header
+    const name = dirData[i][0]; // A
     if (!name) continue;
+
     const lowerName = name.toString().trim().toLowerCase();
-    if (!masterClientNames.includes(lowerName)) {
-      newClients.push(dirData[i]);
-    }
+    if (!existing.includes(lowerName)) newClients.push(dirData[i]);
   }
 
   if (newClients.length === 0) {
-    ui.alert('✅ No missing clients to insert.');
-    console.log('✅ No missing clients to insert.');
+    ui.alert("✅ No missing clients to insert.");
     return;
   }
 
@@ -245,244 +268,235 @@ function insertAllMissingClients() {
     const lastRow = masterSheet.getLastRow();
     masterSheet.insertRowAfter(lastRow);
 
-    // Copy formulas from template row
+    // Copy template row (formatting, validation, formulas)
     const templateRange = masterSheet.getRange(TEMPLATE_ROW, 1, 1, masterSheet.getLastColumn());
     const newRowRange = masterSheet.getRange(lastRow + 1, 1, 1, masterSheet.getLastColumn());
-    templateRange.copyTo(newRowRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+    templateRange.copyTo(newRowRange, SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
 
-    // Fill in values from Client Directory
-    masterSheet.getRange(lastRow + 1, 2).setValue(client[0]);  // Client Name
-    masterSheet.getRange(lastRow + 1, 3).setValue(client[1]);  // Plan Type
-    // ⚠️ Skip Column D (Monthly Hours) — preserve formula
-    masterSheet.getRange(lastRow + 1, 15).setValue(client[3]); // Status
-    masterSheet.getRange(lastRow + 1, 11).setValue(client[2]); // Email
-    masterSheet.getRange(lastRow + 1, 13).setValue(client[5]); // First Name
-    masterSheet.getRange(lastRow + 1, 14).setValue(client[6]); // Last Name
+    // Fill values (2026 layout)
+    masterSheet.getRange(lastRow + 1, 2).setValue(client[0]); // B Client Name (dir A)
+    masterSheet.getRange(lastRow + 1, 3).setValue(client[3]); // C Status (dir D)
+    masterSheet.getRange(lastRow + 1, 11).setValue(client[2]); // K Email (dir C)
+    masterSheet.getRange(lastRow + 1, 12).setValue(client[5]); // L First Name (dir F)
+    masterSheet.getRange(lastRow + 1, 13).setValue(client[6]); // M Last Name (dir G)
 
-    // 🚫 Clear copied links/formulas from template row in Columns R & S
-    masterSheet.getRange(lastRow + 1, 18).clearContent(); // Report Folder URL
-    masterSheet.getRange(lastRow + 1, 19).clearContent(); // Report URL
+    // Clear links in P/Q
+    masterSheet.getRange(lastRow + 1, 16).clearContent(); // P Folder URL
+    masterSheet.getRange(lastRow + 1, 17).clearContent(); // Q Doc Link
   });
 
-  const message = `✅ Inserted ${newClients.length} new client(s) into Master Tracker 2026.`;
-  console.log(message);
-  ui.alert(message);
+  ui.alert(`✅ Inserted ${newClients.length} new client(s) into ${MASTER_SHEET_NAME}.`);
 }
 
 /**
- * PURPOSE:
- * Inserts a new client into the "Client Directory" sheet with default values
- * and copies formatting & data validation from the template row (Row 2).
+ * insertNewClientIntoDirectory
+ * Prompts for new client and inserts into Client Directory using row 2 as formatting template.
+ *
+ * Directory columns assumed:
+ * A Client Name
+ * B Plan Type
+ * C Email
+ * D Status
+ * E Partner
+ * F First Name
+ * G Last Name
  */
 function insertNewClientIntoDirectory() {
   const ui = SpreadsheetApp.getUi();
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Client Directory');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(DIRECTORY_SHEET_NAME);
+  if (!sheet) throw new Error(`Sheet "${DIRECTORY_SHEET_NAME}" not found.`);
 
-  // Prompt user for input
-  const clientNamePrompt = ui.prompt('New Client', 'Enter the client domain or name:', ui.ButtonSet.OK_CANCEL);
+  const clientNamePrompt = ui.prompt("New Client", "Enter the client domain or name:", ui.ButtonSet.OK_CANCEL);
   if (clientNamePrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  const planPrompt = ui.prompt('Plan Type', 'Enter plan type:', ui.ButtonSet.OK_CANCEL);
+  const planPrompt = ui.prompt("Plan Type", "Enter plan type:", ui.ButtonSet.OK_CANCEL);
   if (planPrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  const emailPrompt = ui.prompt('Email', 'Enter client email address:', ui.ButtonSet.OK_CANCEL);
+  const emailPrompt = ui.prompt("Email", "Enter client email address:", ui.ButtonSet.OK_CANCEL);
   if (emailPrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  const partnerPrompt = ui.prompt('Client Partner', 'Enter Client Partner (if applicable):', ui.ButtonSet.OK_CANCEL);
+  const partnerPrompt = ui.prompt("Client Partner", "Enter Client Partner (if applicable):", ui.ButtonSet.OK_CANCEL);
   if (partnerPrompt.getSelectedButton() !== ui.Button.OK) return;
 
-  // Determine insertion point
+  const firstNamePrompt = ui.prompt("First Name", "Enter the first name:", ui.ButtonSet.OK_CANCEL);
+  if (firstNamePrompt.getSelectedButton() !== ui.Button.OK) return;
+
+  const lastNamePrompt = ui.prompt("Last Name", "Enter the last name:", ui.ButtonSet.OK_CANCEL);
+  if (lastNamePrompt.getSelectedButton() !== ui.Button.OK) return;
+
   const lastRow = sheet.getLastRow();
   const newRowIndex = lastRow + 1;
-
-  // Insert blank row at bottom
   sheet.insertRowsAfter(lastRow, 1);
 
-  // Copy formatting + data validation from Row 2
-  const templateRange = sheet.getRange(2, 1, 1, sheet.getLastColumn());
-  const newRowRange = sheet.getRange(newRowIndex, 1, 1, sheet.getLastColumn());
-  templateRange.copyTo(newRowRange, { formatOnly: true });
+  // Copy formatting + validation from Row 2
+  sheet.getRange(2, 1, 1, sheet.getLastColumn())
+    .copyTo(sheet.getRange(newRowIndex, 1, 1, sheet.getLastColumn()), { formatOnly: true });
 
-  // Fill in data values
-  const newRowValues = [];
-  newRowValues[0] = clientNamePrompt.getResponseText().trim();  // A: Client Name
-  newRowValues[1] = planPrompt.getResponseText().trim();        // B: Plan Type
-  newRowValues[2] = emailPrompt.getResponseText().trim();       // C: Email
-  newRowValues[3] = 'Active';                                   // D: Status (default)
-  newRowValues[4] = partnerPrompt.getResponseText().trim();     // E: Client Partner
+  // Set values
+  sheet.getRange(newRowIndex, 1).setValue(clientNamePrompt.getResponseText().trim()); // A
+  sheet.getRange(newRowIndex, 2).setValue(planPrompt.getResponseText().trim());       // B
+  sheet.getRange(newRowIndex, 3).setValue(emailPrompt.getResponseText().trim());      // C
+  sheet.getRange(newRowIndex, 4).setValue("Active");                                 // D
+  sheet.getRange(newRowIndex, 5).setValue(partnerPrompt.getResponseText().trim());   // E
+  sheet.getRange(newRowIndex, 6).setValue(firstNamePrompt.getResponseText().trim()); // F
+  sheet.getRange(newRowIndex, 7).setValue(lastNamePrompt.getResponseText().trim());  // G
 
-  sheet.getRange(newRowIndex, 1, 1, newRowValues.length).setValues([newRowValues]);
-
-  ui.alert('✅ New client added to Client Directory.');
+  ui.alert("✅ New client added to Client Directory.");
 }
 
 /**
- * Sorts the Master Tracker 2026 sheet A–Z by Client Name (Column B).
- * Header in Row 1 is preserved.
+ * addNewClientToTracker
+ * Combined tool:
+ * 1) Adds to Client Directory
+ * 2) Adds to Master Tracker 2026 (if missing)
+ * 3) Sorts Master Tracker A–Z by Client Name
+ * 4) Ensures client exists in Time Entry
  */
-function sortMasterTrackerAZ() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker 2026');
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return;
-
-  // Unhide all client rows before sorting
-  sheet.showRows(2, sheet.getMaxRows() - 1);
-
-  // Sort by Column B (Client Name), ascending
-  const range = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
-  range.sort({ column: 2, ascending: true });
-
-  // Re-hide Inactive and Transitioning rows
-  hideInactiveAndTransitioningRows();
-
-  console.log('✅ Master Tracker 2026 sorted A–Z by Client Name (including hidden rows).');
-}
-
-function onEdit(e) {
-  const sheet = e.source.getActiveSheet();
-  if (sheet.getName() !== 'Client Directory') return;
-
-  const editedRow = e.range.getRow();
-  const editedCol = e.range.getColumn();
-
-  // Only run if a cell in Columns A–K (1–11) was edited, and not the header
-  if (editedRow > 1 && editedCol >= 1 && editedCol <= 11) {
-    const timestampCell = sheet.getRange(editedRow, 11); // Column K
-    timestampCell.setValue(new Date());
-  }
-}
-
-/**
- * PURPOSE:
- * Combined tool to:
- * 1. Prompt user to add a new client to the Client Directory
- * 2. Add any missing clients from the directory into the Master Tracker 2026
- * 3. Sort Master Tracker 2026 alphabetically
- *
- * USAGE:
- * - Adds formatting & validation from template row in directory
- * - Adds missing rows to tracker with formulas from Row 2
- * - Ensures the tracker is sorted A–Z by client name
- */
-
 function addNewClientToTracker() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
-  const directorySheet = ss.getSheetByName('Client Directory');
-  const masterSheet = ss.getSheetByName('Master Tracker 2026');
 
-  // === Step 1: Prompt for Client Info ===
-  const namePrompt = ui.prompt('New Client', 'Enter the client domain or name:', ui.ButtonSet.OK_CANCEL);
+  const directorySheet = ss.getSheetByName(DIRECTORY_SHEET_NAME);
+  const masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+
+  if (!directorySheet) throw new Error(`Sheet "${DIRECTORY_SHEET_NAME}" not found.`);
+  if (!masterSheet) throw new Error(`Sheet "${MASTER_SHEET_NAME}" not found.`);
+
+  // Prompts
+  const namePrompt = ui.prompt("New Client", "Enter the client domain or name:", ui.ButtonSet.OK_CANCEL);
   if (namePrompt.getSelectedButton() !== ui.Button.OK) return;
   const clientName = namePrompt.getResponseText().trim();
 
-  const planPrompt = ui.prompt('Plan Type', 'Enter plan type:', ui.ButtonSet.OK_CANCEL);
+  const planPrompt = ui.prompt("Plan", "Enter plan name/type:", ui.ButtonSet.OK_CANCEL);
   if (planPrompt.getSelectedButton() !== ui.Button.OK) return;
   const planType = planPrompt.getResponseText().trim();
 
-  const emailPrompt = ui.prompt('Email', 'Enter client email address:', ui.ButtonSet.OK_CANCEL);
+  const emailPrompt = ui.prompt("Email", "Enter client email address:", ui.ButtonSet.OK_CANCEL);
   if (emailPrompt.getSelectedButton() !== ui.Button.OK) return;
   const email = emailPrompt.getResponseText().trim();
 
-  const partnerPrompt = ui.prompt('Client Partner', 'Enter Client Partner (if applicable):', ui.ButtonSet.OK_CANCEL);
+  const partnerPrompt = ui.prompt("Partner Agency", "Enter Partner Agency (if applicable):", ui.ButtonSet.OK_CANCEL);
   if (partnerPrompt.getSelectedButton() !== ui.Button.OK) return;
   const partner = partnerPrompt.getResponseText().trim();
 
-  const firstNamePrompt = ui.prompt('First Name', 'Enter the first name of the client:', ui.ButtonSet.OK_CANCEL);
+  const firstNamePrompt = ui.prompt("First Name", "Enter the first name of the client:", ui.ButtonSet.OK_CANCEL);
   if (firstNamePrompt.getSelectedButton() !== ui.Button.OK) return;
   const firstName = firstNamePrompt.getResponseText().trim();
 
-  const lastNamePrompt = ui.prompt('Last Name', 'Enter the last name of the client:', ui.ButtonSet.OK_CANCEL);
+  const lastNamePrompt = ui.prompt("Last Name", "Enter the last name of the client:", ui.ButtonSet.OK_CANCEL);
   if (lastNamePrompt.getSelectedButton() !== ui.Button.OK) return;
   const lastName = lastNamePrompt.getResponseText().trim();
 
-  // === Step 2: Insert into Client Directory ===
+  // 1) Insert into Client Directory (append)
   const lastDirRow = directorySheet.getLastRow();
   const newDirRow = lastDirRow + 1;
   directorySheet.insertRowsAfter(lastDirRow, 1);
 
-  const templateDirRange = directorySheet.getRange(2, 1, 1, directorySheet.getLastColumn());
-  const newDirRange = directorySheet.getRange(newDirRow, 1, 1, directorySheet.getLastColumn());
-  templateDirRange.copyTo(newDirRange, { formatOnly: true });
+  // Copy formatting from Row 2
+  directorySheet.getRange(2, 1, 1, directorySheet.getLastColumn())
+    .copyTo(directorySheet.getRange(newDirRow, 1, 1, directorySheet.getLastColumn()), { formatOnly: true });
 
-  const dirValues = [];
-  dirValues[0] = clientName;   // A - Client Name
-  dirValues[1] = planType;     // B - Plan Type
-  dirValues[2] = email;        // C - Email
-  dirValues[3] = 'Active';     // D - Status
-  dirValues[4] = partner;      // E - Client Partner
-  directorySheet.getRange(newDirRow, 1, 1, dirValues.length).setValues([dirValues]);
+  // Write values into directory
+  directorySheet.getRange(newDirRow, 1).setValue(clientName);  // A
+  directorySheet.getRange(newDirRow, 2).setValue(planType);    // B
+  directorySheet.getRange(newDirRow, 3).setValue(email);       // C
+  directorySheet.getRange(newDirRow, 4).setValue("Active");    // D
+  directorySheet.getRange(newDirRow, 5).setValue(partner);     // E
+  directorySheet.getRange(newDirRow, 6).setValue(firstName);   // F
+  directorySheet.getRange(newDirRow, 7).setValue(lastName);    // G
 
-  console.log("Client added to Client Directory: " + clientName);
+  // 2) Insert into Master Tracker if missing
+  const lastMasterRow = masterSheet.getLastRow();
+  const existingNames = (lastMasterRow >= 3)
+    ? masterSheet.getRange(3, 2, lastMasterRow - 2, 1).getValues()
+        .map(r => (r[0] || "").toString().trim().toLowerCase())
+    : [];
 
-  // === Step 3: Sync to Master Tracker 2026 if missing ===
-  const dirData = directorySheet.getDataRange().getValues();
-  const masterNames = masterSheet.getRange(2, 2, masterSheet.getLastRow() - 1).getValues()
-    .map(row => row[0].toString().trim().toLowerCase());
+  if (!existingNames.includes(clientName.toLowerCase())) {
+    const TEMPLATE_ROW = 2;
+    const insertAt = masterSheet.getLastRow() + 1;
+    masterSheet.insertRowAfter(insertAt - 1);
 
-  if (!masterNames.includes(clientName.toLowerCase())) {
-    const clientRow = dirData.find(row => row[0].toString().trim().toLowerCase() === clientName.toLowerCase());
-    if (!clientRow) {
-      console.warn('⚠️ Could not find client in directory data after adding.');
-      return;
-    }
+    // Copy template row to new row
+    masterSheet.getRange(TEMPLATE_ROW, 1, 1, masterSheet.getLastColumn())
+      .copyTo(masterSheet.getRange(insertAt, 1, 1, masterSheet.getLastColumn()), SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
 
-    const insertRow = masterSheet.getLastRow() + 1;
-    masterSheet.insertRowAfter(insertRow);
+    // Prevent auto-linking on name
+    masterSheet.getRange(insertAt, 2).setNumberFormat("@STRING@");
 
-    const templateRow = masterSheet.getRange(2, 1, 1, masterSheet.getLastColumn());
-    const newTrackerRow = masterSheet.getRange(insertRow + 1, 1, 1, masterSheet.getLastColumn());
-    templateRow.copyTo(newTrackerRow, SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
+    // Set fields (2026 layout)
+    masterSheet.getRange(insertAt, 2).setValue(clientName);  // B Client Name
+    masterSheet.getRange(insertAt, 3).setValue("Active");    // C Status
+    masterSheet.getRange(insertAt, 11).setValue(email);      // K Email
+    masterSheet.getRange(insertAt, 12).setValue(firstName);  // L First Name
+    masterSheet.getRange(insertAt, 13).setValue(lastName);   // M Last Name
+    masterSheet.getRange(insertAt, 21).setValue(partner);    // U Partner Agency
+    masterSheet.getRange(insertAt, 22).setValue(planType);   // V Plan
 
-    // Prevent auto-hyperlinking of Client Name
-    masterSheet.getRange(insertRow + 1, 2).setNumberFormat('@STRING@');
-
-    masterSheet.getRange(insertRow + 1, 2).setValue(clientRow[0]);  // Client Name
-    masterSheet.getRange(insertRow + 1, 3).setValue(clientRow[1]);  // Plan Type
-    masterSheet.getRange(insertRow + 1, 11).setValue(clientRow[2]); // Email
-    masterSheet.getRange(insertRow + 1, 15).setValue(clientRow[3]); // Status
-    masterSheet.getRange(insertRow + 1, 13).setValue(clientRow[5]); // First Name
-    masterSheet.getRange(insertRow + 1, 14).setValue(clientRow[6]); // Last Name
-
-    console.log(`Client added to Master Tracker 2026: ${clientRow[0]}`);
+    // Clear links in P/Q
+    masterSheet.getRange(insertAt, 16).clearContent(); // P Folder
+    masterSheet.getRange(insertAt, 17).clearContent(); // Q Doc
   }
 
-  // === Step 4: Sort Master Tracker 2026 A–Z by Client Name (Column B) ===
-  const lastRow = masterSheet.getLastRow();
-  if (lastRow > 2) {
-    masterSheet.getRange(2, 1, lastRow - 1, masterSheet.getLastColumn())
-      .sort({ column: 2, ascending: true });
-    console.log('✅ Master Tracker 2026 sorted.');
-  }
+  // 3) Sort Master Tracker A–Z by Client Name (Column B)
+  sortMasterTrackerAZ();
 
-  // === Step 5: Ensure the client exists in Weekly Time Entry (permanent) ===
+  // 4) Ensure in Time Entry
   try {
     ensureClientInTimeEntry_(clientName);
   } catch (e) {
-    console.warn('Time Entry add skipped: ' + e);
+    console.warn("Time Entry add skipped: " + e);
   }
 
-  ui.alert(`Client "${clientName}" added and synced to Master Tracker 2026 & Time Entry.`);
+  ui.alert(`✅ Client "${clientName}" added to Directory + Master Tracker + Time Entry.`);
 }
+
 /**
- * Hides rows in the Master Tracker 2026 for clients marked as Inactive or Transitioning.
- * Assumes:
- * - "Master Tracker 2026" has status in Column O (15)
- * - Header is in Row 1
+ * sortMasterTrackerAZ
+ * Sorts the Master Tracker 2026 sheet A–Z by Client Name (Column B).
+ * Preserves header row 1.
+ */
+function sortMasterTrackerAZ() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MASTER_SHEET_NAME);
+  if (!sheet) throw new Error(`Sheet "${MASTER_SHEET_NAME}" not found.`);
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 2) return; // only header + template
+
+  // Unhide all rows before sorting
+  sheet.showRows(2, sheet.getMaxRows() - 1);
+
+  // Sort rows 2..lastRow by Column B
+  sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn())
+    .sort({ column: 2, ascending: true });
+
+  // Re-hide inactive/transitioning
+  hideInactiveAndTransitioningRows();
+
+  console.log("✅ Master Tracker 2026 sorted A–Z by Client Name.");
+}
+
+/**
+ * hideInactiveAndTransitioningRows
+ * Master Tracker 2026: Status is Column C (3)
  */
 function hideInactiveAndTransitioningRows() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker 2026');
-  const START_ROW = 2;
-  const STATUS_COL = 15;
-  const numRows = sheet.getLastRow() - 1;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MASTER_SHEET_NAME);
+  if (!sheet) throw new Error(`Sheet "${MASTER_SHEET_NAME}" not found.`);
 
-  const statuses = sheet.getRange(START_ROW, STATUS_COL, numRows).getValues();
-  sheet.showRows(START_ROW, sheet.getMaxRows() - 1); // Unhide all first
+  const START_ROW = 2;
+  const STATUS_COL = 3; // Column C
+  const numRows = sheet.getLastRow() - 1;
+  if (numRows <= 0) return;
+
+  const statuses = sheet.getRange(START_ROW, STATUS_COL, numRows, 1).getValues();
+  sheet.showRows(START_ROW, sheet.getMaxRows() - 1); // unhide all first
 
   let hiddenCount = 0;
   for (let i = 0; i < statuses.length; i++) {
-    const status = (statuses[i][0] || '').toString().toLowerCase().trim();
-    if (status === 'inactive' || status === 'transitioning') {
+    const status = (statuses[i][0] || "").toString().trim().toLowerCase();
+    if (status === "inactive" || status === "transitioning") {
       sheet.hideRows(START_ROW + i);
       hiddenCount++;
     }
@@ -492,12 +506,31 @@ function hideInactiveAndTransitioningRows() {
 }
 
 /**
- * Unhides all rows in the Master Tracker 2026 (below the header).
+ * unhideAllClientRows
  */
 function unhideAllClientRows() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Master Tracker 2026');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MASTER_SHEET_NAME);
+  if (!sheet) throw new Error(`Sheet "${MASTER_SHEET_NAME}" not found.`);
+
   sheet.showRows(2, sheet.getMaxRows() - 1);
-  console.log('✅ All client rows unhidden.');
+  console.log("✅ All client rows unhidden.");
+}
+
+/**
+ * onEdit
+ * Timestamp updates in Client Directory Column K when Columns A–K are edited.
+ */
+function onEdit(e) {
+  const sheet = e.source.getActiveSheet();
+  if (sheet.getName() !== DIRECTORY_SHEET_NAME) return;
+
+  const editedRow = e.range.getRow();
+  const editedCol = e.range.getColumn();
+
+  // Only run if Columns A–K (1–11) edited, and not header
+  if (editedRow > 1 && editedCol >= 1 && editedCol <= 11) {
+    sheet.getRange(editedRow, 11).setValue(new Date()); // Column K
+  }
 }
 
 /**
@@ -505,34 +538,29 @@ function unhideAllClientRows() {
  * Adds the Client Tools menu when the spreadsheet is opened.
  */
 function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('❤️ Client Tools')
-    .addItem('📄 Run Monthly Rollover + Create Docs (Safe Mode)', 'monthlyRolloverAndCreateDocsSafe')
+  SpreadsheetApp.getUi()
+    .createMenu("❤️ Client Tools")
+    .addItem("📄 Run Monthly Rollover + Create Docs (Safe Mode)", "monthlyRolloverAndCreateDocsSafe")
     .addSeparator()
-    .addItem('➕ Add Client and Sync to Master Tracker 2026', 'addNewClientToTracker')
+    .addItem("➕ Add Client and Sync to Master Tracker 2026", "addNewClientToTracker")
     .addSeparator()
-    .addItem('📋 Insert All Missing Clients to Master Tracker 2026', 'insertAllMissingClients')
-    .addItem('🔤 Sort Master Tracker 2026 A–Z', 'sortMasterTrackerAZ')
-    .addItem('🗂 Insert New Client into Directory', 'insertNewClientIntoDirectory')
+    .addItem("📋 Insert All Missing Clients to Master Tracker 2026", "insertAllMissingClients")
+    .addItem("🔤 Sort Master Tracker 2026 A–Z", "sortMasterTrackerAZ")
+    .addItem("🗂 Insert New Client into Directory", "insertNewClientIntoDirectory")
     .addSeparator()
-    .addItem('🙈 Hide Inactive/Transitioning Rows', 'hideInactiveAndTransitioningRows')
-    .addItem('🫣 Unhide All Client Rows', 'unhideAllClientRows')
+    .addItem("🙈 Hide Inactive/Transitioning Rows", "hideInactiveAndTransitioningRows")
+    .addItem("🫣 Unhide All Client Rows", "unhideAllClientRows")
     .addSeparator()
-    .addItem('🧹 Dedupe by Client (Safe Mode)', 'dedupeByClientKeepFirst_')
+    .addItem("🧾 Sync ALL Master Tracker clients into Time Entry", "syncAllClientsToTimeEntry")
     .addToUi();
 }
-// Time Entry sheet settings (GLOBAL)
-const TIME_ENTRY_SHEET = 'Time Entry';      // tab name
-const TIME_ENTRY_TEMPLATE_ROW = 3;          // ⬅️ change this to 3
 
 /**
- * === Time Entry Helpers ===
- * Ensures clients are also present in the "Time Entry" tab.
- * Guarantees a single row for the client in Time Entry:
- *  • Doesn’t bail out if the sheet only has headers
- *  • Copies the Row 2 template (formulas/validation)
- *  • Sets the client name in Column A as text (avoids auto-linking)
- *  • Idempotent (does nothing if the client already exists)
+ * ensureClientInTimeEntry_
+ * Ensures a single row exists for the client in Time Entry.
+ * - Copies template row (TIME_ENTRY_TEMPLATE_ROW)
+ * - Sets client name in Column A as text
+ * - Idempotent
  */
 function ensureClientInTimeEntry_(clientName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -541,37 +569,50 @@ function ensureClientInTimeEntry_(clientName) {
 
   const lastRow = te.getLastRow(); // may be 1 if only headers
 
-  // SAFE: only read names if at least one data row exists
+  // Read existing names from row 2 down (if any)
   let names = [];
   if (lastRow >= 2) {
     names = te.getRange(2, 1, lastRow - 1, 1)
       .getValues()
-      .map(r => (r[0] || '').toString().trim().toLowerCase());
+      .map(r => (r[0] || "").toString().trim().toLowerCase());
   }
 
-  const target = (clientName || '').toString().trim().toLowerCase();
+  const target = (clientName || "").toString().trim().toLowerCase();
   if (!target) return false;
-  if (names.indexOf(target) !== -1) return false; // already present
+  if (names.indexOf(target) !== -1) return false;
 
-  // Insert a new row, copy template from Row 2
-  const insertAt = lastRow + 1;                 // if only header, this becomes 2
-  te.insertRowAfter(insertAt - 1);              // inserts after row 1 safely
+  // Insert new row at bottom
+  const insertAt = lastRow + 1;     // if only header, becomes 2
+  te.insertRowAfter(insertAt - 1);  // insert after last existing row
+
+  // Copy template row into new row
   te.getRange(TIME_ENTRY_TEMPLATE_ROW, 1, 1, te.getLastColumn())
     .copyTo(te.getRange(insertAt, 1, 1, te.getLastColumn()), { contentsOnly: false });
 
-  te.getRange(insertAt, 1).setValue(clientName).setNumberFormat('@STRING@'); // prevent auto-link
+  // Set client name as text (avoid auto-linking)
+  te.getRange(insertAt, 1).setNumberFormat("@STRING@");
+  te.getRange(insertAt, 1).setValue(clientName);
+
   console.log(`✅ Added "${clientName}" to Time Entry at row ${insertAt}`);
   return true;
 }
 
 /**
- * Utility to sync all clients from Master Tracker 2026 into Time Entry
- * (Run manually if needed).
+ * syncAllClientsToTimeEntry
+ * Syncs all client names from Master Tracker 2026 Column B into Time Entry.
  */
 function syncAllClientsToTimeEntry() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const tracker = ss.getSheetByName('Master Tracker 2026');
-  const names = tracker.getRange(2, 2, tracker.getLastRow() - 1, 1).getValues();
+  const tracker = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!tracker) throw new Error(`Sheet "${MASTER_SHEET_NAME}" not found.`);
+
+  const lastRow = tracker.getLastRow();
+  if (lastRow < 3) {
+    SpreadsheetApp.getUi().alert("No client rows found to sync.");
+    return;
+  }
+
+  const names = tracker.getRange(3, 2, lastRow - 2, 1).getValues();
 
   let added = 0;
   names.forEach(r => {
@@ -580,6 +621,6 @@ function syncAllClientsToTimeEntry() {
       added++;
     }
   });
+
   SpreadsheetApp.getUi().alert(`✅ Sync complete. ${added} client(s) added to Time Entry.`);
 }
-
