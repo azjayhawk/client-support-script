@@ -1,0 +1,126 @@
+# Client Tracking System — Sheet Brief
+
+*Last updated: 2026-03-23*
+
+---
+
+## Sheet 1: AI - Staff Time Entry
+**Doc ID:** `1ViCXRwADPNRfRq0v1vk_Pxr2bPcPPlt2wt4JuMRoTKA`
+**Purpose:** Internal staff time logging. Every hour any team member works on a client site is entered here. This is the operational data source for both payroll visibility and client billing calculations.
+
+### Tab Structure
+
+**Time Entry** — The primary data entry tab. Staff log work here in real time.
+- Columns: Date, Staff Name, Domain, Plan, Tier, Staff Note (auto-populated maintenance indicator), Billable (Yes/No), Duration (hh:mm), Type of Entry (Support or Management), Descriptive Notes (used in client reports), Entry ID, Timestamp
+- The Staff Note field is pulled from the Helper tab and displays the maintenance schedule emoji/label for that client (e.g., ✅ Monthly maintenance — proceed, ⛔ Hosting only, 🚫 No maintenance — bill before work, ❓ Semi-annual check)
+- Filter views exist per staff member: April, Bryce, Carol, Eric, Jewel, Nicole, Smit
+
+**Monthly Summary** — Aggregated view filtered to a selected month (date-controlled).
+- One row per client domain
+- Columns: per-staff time subtotals, Total Duration, Billable Duration, Entry Count
+- Shows which clients received time that month and how much
+
+**Staff Summary** — Condensed per-staff view for the selected month.
+- Shows: Staff Name, Total Hours (decimal), Billable Hours (decimal), Entry Count
+- Current active staff: Bryce, Carol, Jewel, Smit
+
+**Live Monthly Client Totals** — Accumulating historical ledger of finalized monthly totals per client.
+- Key: `YYYY-MM` month key + client domain (e.g., `2026-03|receptivadx.com`)
+- Columns: Month Key, Client, Total Duration, Billable Duration, Entry Count, Hours (decimal), Billable Hours (decimal)
+- Grows month over month; never overwritten. This is the data source for balance calculations in the Support Tracker.
+
+**Closed Monthly Client Totals** — Same structure as Live Monthly Client Totals but for inactive clients.
+
+**All Time Entries / All Entries / Archive** — Full historical logs. Read-only reference views.
+
+**Helper** — The lookup/reference backbone of the entire sheet.
+- Columns: Client (domain), Plan, Tier, Team (assigned staff), Months (maintenance rotation schedule cycling Jan 2026 → Dec 2027), Maintenance Schedule (verbose label), Staff Note (emoji + label displayed in Time Entry)
+- Source of truth for: plan, assigned staff, maintenance type, and what the time entry form displays as context
+- All formula lookups in Time Entry pull from this tab
+
+---
+
+## Sheet 2: TESTING - New Monthly Support Tracker
+**Doc ID:** `1L7oZ0ERUgG593KNuwd1f_v7NoYY4TlutBkdAT00TbhM`
+**Purpose:** Client-facing support management and balance tracking. This is the operational dashboard for every client's support relationship — plans, balances, billing model, contacts, and monthly reporting.
+
+> Note: The "TESTING" prefix indicates this is an in-development version. The structure is largely production-ready but actively evolving.
+
+### Tab Structure
+
+**Instructions** — Overview of how the spreadsheet works, monthly checklist tasks, and payment portal links (Stripe credit card update link, Anchor login).
+
+**Client Directory** — The canonical client registry. One row per client.
+- Columns: Client (domain), Plan Type, Email, Status (Active/Inactive/Transitioning), Partner Agency, First/Last Name, Track Time Entry (Yes/No), Payment System (Stripe or Anchor), Renewal Term (Monthly or Annual), Date Updated, Start/End Date, Access to GA, Domain Expiry, Report Folder URL, Monthly Support Doc Link, Special Update Process flag, Asana Project Link, Host, Plan Tier, Staff Note, Maintenance Schedule
+- Payment systems: Stripe (monthly billing) or Anchor (annual contracts)
+- Host types: WPEngine - RadU Account, WPEngine - Client Account, Hostinger, Kinsta, GoDaddy, Squarespace
+- **This is the source of truth for all client metadata.** All other tabs derive from this list.
+
+**Master Tracker 2026** — The rolling monthly balance sheet for the current year. One row per client.
+- Columns: Client Name, Status, Transition Notes, Email, First/Last Name, Access to GA, Report Folder URL, Support Doc Link, Internal Notes, Partner Agency, Plan, Old Plan, Active Month, [Current Month — e.g., "Mar 26"], Lookup Key
+- The numeric columns for the current month represent: Hours Carried Forward, Hours Used (Billable), Balance, Hours Added (plan refresh), New Balance
+- "✔ Added 12 hours" notation = monthly hour allocation applied for managed clients
+- Lookup Key format: `YYYY-MM|client.domain` — the join key linking to the Staff Time Entry sheet
+- Inactive and Transitioning clients remain in the tracker for historical continuity; they simply don't receive hour additions
+
+**Master - Bucket Model** — A parallel view to Master Tracker 2026 with identical current data. A staging/comparison model for a block/bucket billing approach.
+
+**Feb 2026 / Legacy Monthly Tabs** — Historical monthly snapshots (e.g., "🥂Jan26Tracker", "🎄(LOCKED) Dec25 Tracker", etc.). Locked tabs must not be edited.
+
+**Time Entry** (Support Tracker version) — Legacy manual time entry tab with weekly columns (Week 1–5) per client row. Being phased out in favor of the Staff Time Entry sheet. A note inside reads: "I edited column O and used it to paste in data from my new tracker this month (Feb 2026)."
+
+**Time Import** — Import destination for migrating time data into the new structure.
+
+**Hosting Only** — Clients on hosting-only plans with no support time tracked.
+
+**Block History** — History of prepaid support hour block purchases per client.
+
+**Plans / Monthly Plan** — Plan definitions and pricing structure.
+
+**Blocks over time** — Tracking of how block balances have changed over time.
+
+---
+
+## Relationship Between the Two Sheets
+
+These two sheets operate as a connected system:
+
+| Staff Time Entry | Direction | Monthly Support Tracker |
+|---|---|---|
+| Staff log time in **Time Entry** tab | → | Informs hours-used in **Master Tracker 2026** |
+| **Live Monthly Client Totals** accumulates monthly hours per client | feeds → | Master Tracker balance columns via Lookup Key |
+| **Helper** tab holds plan/tier/maintenance metadata | mirrors → | **Client Directory** plan/tier fields |
+| **Monthly Summary** shows total hours by client | informs → | Which clients are at or over their monthly allocation |
+
+**The Monthly Workflow:**
+1. Staff log entries in Staff Time Entry → Time Entry tab throughout the month
+2. At month end, Live Monthly Client Totals is finalized per client
+3. Master Tracker 2026 is updated: hours-used pulled via Lookup Key, monthly hours refreshed for managed plans, balances carried forward
+4. Client-facing monthly summary docs are generated from the Master Tracker
+
+---
+
+## Key System Notes
+
+**Lookup Key** (`YYYY-MM|domain`) is the join key between the two sheets. It must be consistent in both to work correctly.
+
+**Plan Tier codes** follow a pattern:
+- `RadiateU-0`, `RadiateU-3`, `RadiateU-5` — RadiateU-branded managed plans
+- `Starter-0`, `Starter-1` — Starter tier
+- `Grow-0`, `Grow-1` — Growth tier
+- `Pro-1` — Pro tier
+- `Premium-2` — Premium tier
+- `Managed Plus` — Top managed tier
+- `Hosting` — Hosting-only, no support
+- `Other-Block-0`, `Other-1` — Other/block arrangements
+
+**Maintenance schedule indicators (Staff Note emoji) are standardized:**
+- ✅ Monthly maintenance — included in plan, proceed
+- ⛔ Hosting only — approval required before work
+- 🚫 No maintenance — bill before work
+- ❓ Semi-annual — check last service date; additional work billed as support
+- ⚠️ Bill maintenance as support (not included in plan)
+
+**Partner agencies** (Mode Effect, Professional Punch, Stimuli Media, Made Better Studio, Positive Element, Right Stuff Media, Stimuli Media) are tracked with their own contact info but follow normal billing rules with the partner as primary contact.
+
+**~60+ client domains** are tracked in the system. Only clients with Track Time Entry = Yes in the Client Directory flow into active billing logic.
